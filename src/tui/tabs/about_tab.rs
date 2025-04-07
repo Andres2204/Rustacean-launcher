@@ -18,10 +18,12 @@ impl Widget for AboutTab {
 
 impl Tab for AboutTab {
     fn render_tab(&self, area: Rect, buf: &mut Buffer) {
-        self.render(area, buf);
+        self.render(area, buf)
     }
 
-    fn handle_key(&mut self, _key: KeyEvent) {
-        todo!("")
+    fn handle_key(&mut self, key: KeyEvent) {
+        match key.code { 
+            _ => {}
+        }
     }
 }

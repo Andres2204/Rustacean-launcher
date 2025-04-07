@@ -5,11 +5,11 @@ use std::path::Path;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use crate::core::downloader::download_structs::AssetsJson;
-use crate::core::downloader::downloader::download_files_concurrently;
+use crate::core::downloader::downloader::{download_files_concurrently, DownloaderTracking};
 
 pub struct AssetDownloader;
 impl AssetDownloader {
-    pub async fn download_assets(assets: AssetsJson, minecraft_path: &Path, progress: Option<Arc<Mutex<(usize, usize)>>>)  -> io::Result<()> {
+    pub async fn download_assets(assets: AssetsJson, minecraft_path: &Path, progress: Option<Arc<Mutex<DownloaderTracking>>>)  -> io::Result<()> {
         let mut map: HashMap<String, String> = HashMap::new();
         let assets_dir = minecraft_path.join("assets").join("objects");
         

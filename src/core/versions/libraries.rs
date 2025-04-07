@@ -4,12 +4,12 @@ use std::path::Path;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use crate::core::downloader::download_structs::Library;
-use crate::core::downloader::downloader::download_files_concurrently;
+use crate::core::downloader::downloader::{download_files_concurrently, DownloaderTracking};
 
 pub struct LibraryDownloader;
 
 impl LibraryDownloader {
-    pub async fn download_libraries(libraries: Vec<Library>, minecraft_path: &Path, progress: Option<Arc<Mutex<(usize, usize)>>>) -> io::Result<()> {
+    pub async fn download_libraries(libraries: Vec<Library>, minecraft_path: &Path, progress: Option<Arc<Mutex<DownloaderTracking>>>) -> io::Result<()> {
         let mut map: HashMap<String, String> = HashMap::new();
         libraries.into_iter().for_each(
             |lib| {

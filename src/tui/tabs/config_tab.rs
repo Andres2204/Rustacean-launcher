@@ -72,6 +72,7 @@ impl Tab for ConfigTab {
     fn render_tab(&self, area: Rect, buf: &mut Buffer) {
         self.clone().render(area, buf)
     }
+
     fn handle_key(&mut self, key: KeyEvent) {
         match key.code {
             KeyCode::Up => self.previous_config_tab(),
@@ -106,8 +107,6 @@ impl ConfigTab {
             .highlight_spacing(HighlightSpacing::Always)
             .direction(ListDirection::TopToBottom)
             .block(sidebar_block);
-
-
 
         config_list.render(area, buf);
         // TODO: Create a tabs for config tab o something like that

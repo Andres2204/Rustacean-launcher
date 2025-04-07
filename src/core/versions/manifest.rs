@@ -33,13 +33,17 @@ impl Clone for VersionInfo {
 impl Manifest {
     pub async fn get_version_manifest(versions_manifest_link: &str) -> io::Result<Manifest> {
         let response = reqwest::get(versions_manifest_link)
-            .await
-            .expect("failed to get version_manifest")
-            .json::<Manifest>()
-            .await
-            .expect("failed to parse versions");
-
-        Ok(response)
+            .await;
+        match response {
+            Ok(res) => {
+                Ok(res.json::<Manifest>()
+                    .await
+                    .expect("failed to parse versions"))
+            }
+            Err(e) => {
+                Err(io::Error::new(io::ErrorKind::Other, e))
+            }
+        }
     }
 
     pub fn get_version_by_id(&self, version: &str) -> io::Result<VersionInfo> {

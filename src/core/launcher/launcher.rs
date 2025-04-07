@@ -5,6 +5,7 @@ use crate::core::launcher::launcher_config::LauncherConfig;
 use crate::core::versions::version::Version;
 use crate::core::user::offline_user::OfflineUser;
 
+// TODO: is public!!
 pub struct MinecraftLauncher {
     pub(crate) version: Box<dyn Version>,
     pub(crate) user: OfflineUser,
@@ -15,7 +16,7 @@ impl MinecraftLauncher {
     pub fn launch_minecraft(
         &self,
     ) -> std::io::Result<()> {
-        // TODO: java -Xmx8G -Djava.library.path=C:\Minecraft\natives -cp "C:\Minecraft\libraries\lib1.jar;C:\Minecraft\libraries\lib2.jar;C:\Minecraft\versions\1.21.3\client.jar" net.minecraft.client.main.Main --username "MiUsuarioOffline" --version "1.21.3" --gameDir "C:\Minecraft" --assetsDir "C:\Minecraft\assets" --assetIndex "1.21.3" --uuid "OfflineUUID" --accessToken "OfflineAccessToken" --userType "legacy"
+        // TODO: java -Xmx8G -Djava.library.path=C:\Minecraft\natives -cp "C:\Minecraft\libraries\lib1.jar;C:\Minecraft\libraries\lib2.jar;C:\Minecraft\versions\1.21.3&self, &self, \client.jar" net.minecraft.client.main.Main --username "MiUsuarioOffline" --version "1.21.3" --gameDir "C:\Minecraft" --assetsDir "C:\Minecraft\assets" --assetIndex "1.21.3" --uuid "OfflineUUID" --accessToken "OfflineAccessToken" --userType "legacy"
         let LauncherConfig {minecraft_path, ..} = &self.launcher_config;
         
         // obtener librerias
@@ -73,7 +74,7 @@ impl MinecraftLauncher {
         command
             // jvm args
             //.arg(format!("-Djava.library.path={}", Path::new(&minecraft_path.clone()).join("libraries").as_path().to_str().unwrap())) // Ruta de las bibliotecas nativas
-            .arg("-Xmx8G") // Ajusta la memoria según sea necesario
+            //.arg("-Xmx8G") // Ajusta la memoria según sea necesario
 
             .arg("-cp").arg(classpath) // Classpath con `client.jar` y bibliotecas
             .arg("net.minecraft.client.main.Main") // Clase principal del cliente

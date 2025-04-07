@@ -1,49 +1,63 @@
 use std::error::Error;
+use std::io;
+use env_logger::init;
+
 mod core;
 mod tui;
 pub(crate) mod command;
 use command::command::Command;
 use command::commands::launch::LaunchCommand;
 use crate::core::downloader::download_structs::VersionType;
-use crate::core::versions::version::{StandardVersion, Version, VersionDownloader, VersionState};
+use crate::core::launcher::launcher_config::{LauncherConfig, Ui};
+use crate::core::versions::version::{StandardVersion, Version, VersionState};
 use crate::core::versions::version_manager::VersionManager;
 // TODO: descargar los jdks necesarios y guardarlos en una carpeta
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    //download_version("1.21.3", VersionType::RELEASE)
-    //    .await
-    //    .expect("[MAIN] Download failed ");
+    if let Ui::TUI = LauncherConfig::import_config().ui {
+       println!("Starting tui...");
+       tui::app::Tui::new().run_tui().expect("[MAIN/RATATUI] Failed to run UI");
+    }
     
-    //if let Ui::TUI = LauncherConfig::import_config().ui {
-    //    println!("Starting tui...");
-    //    tui::app::Tui::new().run_tui().expect("[MAIN/RATATUI] Failed to run UI");
-    //}
+    // init();
+    // test_dowload().await?;
+    // let versions = VersionManager::fetch_versions().await?;
+    // versions.into_iter().for_each(|v| {println!("{v}")});
+    // LaunchCommand.execute();
+    
+    // progress_file_download(
+    //     "https://piston-data.mojang.com/v1/objects/977727ec9ab8b4631e5c12839f064092f17663f8/client.jar",
+    //     "/home/andres/Descargas/client.jar"
+    // ).await?;
+    
+    // let versions = VersionManager::fetch_versions().await?;
+    // println!("{:#?}", versions);
+    
+    Ok(())
+}
 
+async fn test_dowload() -> io::Result<()> {
     let v: Box<dyn Version> = Box::new(StandardVersion::new(
         "1.19.3",
         VersionType::RELEASE,
         "https://piston-meta.mojang.com/v1/packages/526571ff4d3513ff70d59c72ad525f5cc3c0db4d/1.19.3.json",
         VersionState::INSTALLED(false)
     ));
-    VersionManager::download_version(v).await?;
-    let versions = VersionManager::fetch_versions().await?;
-    // versions.into_iter().for_each(|v| {println!("{v}")});
-    LaunchCommand.execute();
+    // let res = VersionManager::verify_version_installation(v);
+    // println!("Verify response: {:?}", res);
+    // VersionManager::download_version(v, /* Arc<tokio::sync::Mutex<DownloaderTracking>> */).await?;
     Ok(())
 }
 
 // TODO: REFINE THE VersionJson Structs
 // TODO: quitar exceso de clonaciones para libraries, modulaizar
-// TODO: multithreading download
-
-
 
 /*
 minecraft/
 ├── assets/
 │   ├── indexes/
-│   │   └── <version>.json                    # Archivo JSON del índice de assets para la versión (por ejemplo, "1.20.1.json")
+│   │   └── <index_id>.json                    # Archivo JSON del índice de assets para la versión (por ejemplo, "1.20.1.json")
 │   └── objects/
 │       ├── 4e/                               # Subcarpeta con los primeros dos caracteres del hash del asset
 │       │   └── 4e0c9a57bb83358f5c36f5d32cf7635b2ec66532  # Archivo de asset (por ejemplo, sonidos, texturas)

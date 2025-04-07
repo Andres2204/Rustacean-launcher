@@ -40,6 +40,9 @@ use tabs::AboutTab;
 use crate::command::command::Command;
 use crate::command::commands::launch::LaunchCommand;
 
+// TODO: Encontrar forma de no clonar el tabwidget
+// volviendolo un widget solamente ? 
+// nose
 pub struct App {
     tabs: Vec<Box<dyn TabWidget>>,
     selected_tab: usize,
@@ -58,7 +61,7 @@ impl App {
     fn new() -> App {
         App { 
             tabs: vec![
-                Box::new(LaunchTab::default()),
+                Box::new(LaunchTab::new()),
                 Box::new(ConfigTab::default()),
                 Box::new(AboutTab::default())
             ], 
@@ -163,7 +166,8 @@ impl App {
     }
 
     fn render_selected_tab(&self, area: Rect, buf: &mut Buffer) {
-        self.tabs[self.selected_tab].render_tab(area, buf);
+        let tab = &self.tabs[self.selected_tab];
+        tab.render_tab(area, buf);
     }
     
     fn render_bottom_bar(&self, area: Rect, buf: &mut Buffer) {

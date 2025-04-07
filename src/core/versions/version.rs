@@ -1,29 +1,32 @@
-use crate::core::downloader::download_structs::{AssetsJson, VersionJson, VersionType};
-use crate::core::launcher::launcher_config::LauncherConfig;
-use crate::core::versions::assets::AssetDownloader;
-use crate::core::versions::libraries::LibraryDownloader;
+use crate::core::downloader::download_structs::{VersionJson, VersionType};
 use crate::core::versions::manifest::VersionInfo;
-use reqwest;
+use std::fmt::{Debug, Display, Formatter};
 use std::path::Path;
-use std::sync::Arc;
-use std::{fs, io};
-use std::fmt::{Display, Formatter};
-use tokio::sync::Mutex;
-use crate::core::downloader::downloader::download_file;
+use crate::core::versions::verifier::VersionVerifier;
 // TODO: trait -> normalversion, modpackversion, forgeversion (mod client)
 
-pub trait Version {
+pub trait Version: Send + Sync {
     fn name(&self) -> String;
     fn set_name(&mut self, name: String);
-
     fn state(&self) -> VersionState;
     fn set_state(&mut self, state: VersionState);
     fn version_type(&self) -> VersionType;
     fn set_version_type(&mut self, version_type: VersionType);
     fn json_url(&self) -> String;
+    fn box_clone(&self) -> Box<dyn Version>;
+    fn from_local(version_json: VersionJson) -> Box<dyn Version> where Self: Sized;
 }
-
 impl Display for dyn Version {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "Name: {}, Type: {:?}",
+            self.name(),
+            self.version_type(),
+        )
+    }
+}
+impl Debug for dyn Version {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
@@ -35,6 +38,12 @@ impl Display for dyn Version {
         )
     }
 }
+impl Clone for Box<dyn Version> {
+    fn clone(&self) -> Self {
+        self.box_clone()
+    }
+    
+}
 
 #[derive(Debug, Copy, Clone)]
 pub enum VersionState {
@@ -43,7 +52,7 @@ pub enum VersionState {
     VERIFYING,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct StandardVersion {
     name: String,
     version_type: VersionType,
@@ -93,160 +102,17 @@ impl Version for StandardVersion {
     fn json_url(&self) -> String {
         self.url.clone()
     }
-}
-
-// UTILITY FOR VERSIONS TODO: move to own files
-pub struct VersionVerifier;
-impl VersionVerifier {
-    pub fn is_installed(mut version: &mut Box<(dyn Version + 'static)>) -> bool {
-        if Path::new(&LauncherConfig::import_config().minecraft_path)
-            .join("versions")
-            .join(version.name())
-            .join(format!("{}.json", version.name()))
-            .as_path()
-            .exists()
-        {
-            version.set_state(VersionState::INSTALLED(true));
-            return true;
-        }
-        version.set_state(VersionState::INSTALLED(false));
-        false
+    fn box_clone(&self) -> Box<dyn Version> {
+        Box::new(self.clone())
     }
-
-    pub fn verify_installation(version: &Box<(dyn Version + 'static)>) -> bool {
-        todo!()
+    fn from_local(version_json: VersionJson) -> Box<dyn Version> {
+        let version: Box<dyn Version> = Box::new(Self {
+            name: version_json.id(),
+            version_type: version_json.get_type(), 
+            url: "".to_string(), // TODO: find the url with the json or save it in a file
+            state: VersionState::INSTALLED(true),
+        }); // TODO: Verify instalation
+        version
     }
 }
 
-pub struct VersionDownloader;
-impl VersionDownloader {
-    pub async fn download_version(
-        mut version: Box<dyn Version + 'static>,
-        progress: Arc<Mutex<(usize, usize)>>,
-    ) -> io::Result<()> {
-        match version.version_type() {
-            VersionType::RELEASE
-            | VersionType::SNAPSHOT
-            | VersionType::OldBeta
-            | VersionType::OldAlpha => Self::download_standard(version, progress).await,
-        }
-    }
-
-    async fn download_standard(
-        mut version: Box<dyn Version + 'static>,
-        mut progress: Arc<Mutex<(usize, usize)>>,
-    ) -> io::Result<()> {
-        version.set_state(VersionState::DOWNLOADING);
-        let config = LauncherConfig::import_config();
-        Self::download_initial_files(&version).await?;
-
-        // version json local
-        let minecraft_path = config.minecraft_path.clone();
-        let version_json = VersionJson::get_from_local(minecraft_path.clone(), version.name());
-
-        let asset_index = version_json.get_asset();
-        let assets = AssetsJson::from_local(
-            Path::new(&config.minecraft_path)
-                .join("assets")
-                .join("indexes")
-                .join(format!("{}.json", asset_index.id).as_str())
-                .as_path(),
-        );
-        let total_assets = assets.objects.len();
-        let total_libraries = version_json.get_libraries().len();
-        let total_objects: usize = total_libraries + total_assets;
-
-        *progress.lock().await = (0usize, total_objects);
-
-        let library_progress = Arc::new(Mutex::new((0, total_libraries)));
-        let lib_progress_clone = Arc::clone(&library_progress);
-
-        let mut mine_path_clone = minecraft_path.clone();
-        tokio::spawn(async move {
-            LibraryDownloader::download_libraries(
-                version_json.get_libraries().clone(),
-                Path::new(&mine_path_clone),
-                Some(lib_progress_clone),
-            )
-            .await
-            .expect("can't download libraries");
-        });
-
-        let asset_progress = Arc::new(Mutex::new((0, total_assets)));
-        let asset_progress_clone = Arc::clone(&asset_progress);
-
-        mine_path_clone = minecraft_path.clone();
-        tokio::spawn(async move {
-            AssetDownloader::download_assets(
-                assets,
-                Path::new(&mine_path_clone),
-                Some(asset_progress_clone),
-            )
-            .await
-            .expect("cant download assets");
-        });
-        
-        let mut cached_progress = 0usize;
-        loop {
-            let mut main_progress = progress.lock().await;
-            let library_progress_guard = library_progress.lock().await;
-            let asset_progress_guard = asset_progress.lock().await;
-
-            main_progress.0 = library_progress_guard.0 + asset_progress_guard.0;
-            if main_progress.0 != cached_progress {
-                println!(" <> --- {main_progress:?} --- <>");
-                cached_progress = main_progress.0;
-            }
-            if main_progress.0 == main_progress.1 {
-                break;
-            }
-        }
-
-        version.set_state(VersionState::INSTALLED(true));
-        Ok(())
-    }
-    
-    async fn download_initial_files(version: &Box<dyn Version + 'static>) -> io::Result<()> {
-
-        let LauncherConfig { minecraft_path, version_manifest_link, .. } = LauncherConfig::import_config();
-        // Paso 0.1: crear carpeta si no existe
-        match fs::create_dir_all(minecraft_path.clone()) {
-            Ok(e) => println!("Directory created {:?}", e),
-            _ => {}
-        }
-        
-        // download version.json
-        let version_name = version.name();
-        download_file(
-            &version.json_url(),
-            Path::new(&format!("{}/versions/{}/{}.json", &minecraft_path, &version_name, &version_name)),
-            None
-        ).await.expect("Download method failed.");
-
-        // download asset index json
-        let version_json = VersionJson::get_from_local(minecraft_path.clone(), version_name.clone());
-        let assets_index = version_json.get_asset();
-        download_file(
-            assets_index.url.as_str(),
-            Path::new(&minecraft_path)
-                .join("assets")
-                .join("indexes")
-                .join(format!("{}.json", assets_index.id).as_str())
-                .as_path(),
-            None
-        ).await.expect("Cant download assets indexes json");
-        
-        // download client
-        download_file(
-            version_json.get_client_url().as_str(),
-            Path::new(&minecraft_path.clone())
-                .join("versions")
-                .join(version_name.as_str())
-                .join(format!("{}.json", version_name).as_str())
-                .as_path(),
-            None
-        ).await.expect("Cant download client.jar ");
-        
-        Ok(())
-    }
-}
