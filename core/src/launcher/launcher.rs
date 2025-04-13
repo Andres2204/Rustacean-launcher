@@ -1,15 +1,15 @@
 use std::path::Path;
 use std::process::Stdio;
-use crate::core::downloader::download_structs::{VersionJson, Arguments};
-use crate::core::launcher::launcher_config::LauncherConfig;
-use crate::core::versions::version::Version;
-use crate::core::user::offline_user::OfflineUser;
+use crate::downloader::download_structs::{VersionJson, Arguments};
+use crate::launcher::launcher_config::LauncherConfig;
+use crate::versions::version::Version;
+use crate::user::offline_user::OfflineUser;
 
 // TODO: is public!!
 pub struct MinecraftLauncher {
-    pub(crate) version: Box<dyn Version>,
-    pub(crate) user: OfflineUser,
-    pub(crate) launcher_config: LauncherConfig
+    pub version: Box<dyn Version>,
+    pub user: OfflineUser,
+    pub launcher_config: LauncherConfig
 }
 
 impl MinecraftLauncher {

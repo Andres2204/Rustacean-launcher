@@ -2,11 +2,8 @@ use std::error::Error;
 use std::io;
 use env_logger::init;
 
-mod core;
+use core;
 mod tui;
-pub(crate) mod command;
-use command::command::Command;
-use command::commands::launch::LaunchCommand;
 use crate::core::downloader::download_structs::VersionType;
 use crate::core::launcher::launcher_config::{LauncherConfig, Ui};
 use crate::core::versions::version::{StandardVersion, Version, VersionState};

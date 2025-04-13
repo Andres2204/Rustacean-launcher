@@ -1,7 +1,7 @@
-use crate::core::user::user::User;
+use crate::user::user::User;
 
 pub struct OfflineUser {
-    pub(crate) name: String,
+    pub name: String,
 }
 
 impl User for OfflineUser {

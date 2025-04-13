@@ -1,10 +1,10 @@
-use crate::core::downloader::download_structs::VersionType;
-use crate::core::downloader::downloader::DownloaderTracking;
-use crate::core::launcher::launcher_config::LauncherConfig;
-use crate::core::versions::downloader::VersionDownloader;
-use crate::core::versions::manifest::Manifest;
-use crate::core::versions::verifier::VersionVerifier;
-use crate::core::versions::version::{StandardVersion, Version};
+use crate::downloader::download_structs::VersionType;
+use crate::downloader::downloader::DownloaderTracking;
+use crate::launcher::launcher_config::LauncherConfig;
+use crate::versions::downloader::VersionDownloader;
+use crate::versions::manifest::Manifest;
+use crate::versions::verifier::VersionVerifier;
+use crate::versions::version::{StandardVersion, Version};
 use std::{io, fs};
 use std::path::Path;
 use std::sync::Arc;

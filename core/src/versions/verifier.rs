@@ -1,7 +1,7 @@
 use std::io;
-use crate::core::downloader::download_structs::{AssetsJson, VersionJson, VersionType};
-use crate::core::launcher::launcher_config::LauncherConfig;
-use crate::core::versions::version::{StandardVersion, Version, VersionState};
+use crate::downloader::download_structs::{AssetsJson, VersionJson, VersionType};
+use crate::launcher::launcher_config::LauncherConfig;
+use crate::versions::version::{StandardVersion, Version, VersionState};
 use std::path::{Path, PathBuf};
 
 pub struct VersionVerifier;

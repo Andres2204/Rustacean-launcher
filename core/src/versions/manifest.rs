@@ -1,6 +1,6 @@
 use std::io;
 use serde::{Deserialize, Serialize};
-use crate::core::downloader::download_structs::VersionType;
+use crate::downloader::download_structs::VersionType;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Manifest {

@@ -1,8 +1,7 @@
-use crate::core::downloader::download_structs::{VersionJson, VersionType};
-use crate::core::versions::manifest::VersionInfo;
+use crate::downloader::download_structs::{VersionJson, VersionType};
+use crate::versions::manifest::VersionInfo;
 use std::fmt::{Debug, Display, Formatter};
-use std::path::Path;
-use crate::core::versions::verifier::VersionVerifier;
+use crate::versions::verifier::VersionVerifier;
 // TODO: trait -> normalversion, modpackversion, forgeversion (mod client)
 
 pub trait Version: Send + Sync {

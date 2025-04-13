@@ -37,8 +37,6 @@ use crate::tui::tabs;
 use tabs::LaunchTab;
 use tabs::ConfigTab;
 use tabs::AboutTab;
-use crate::command::command::Command;
-use crate::command::commands::launch::LaunchCommand;
 
 // TODO: Encontrar forma de no clonar el tabwidget
 // volviendolo un widget solamente ? 
@@ -102,10 +100,6 @@ impl App {
             KeyCode::Char('q') => self.prev_tab(),
             KeyCode::Char('e') => self.next_tab(),
             KeyCode::Char('c') => self.is_running = false,
-            KeyCode::Char('l') => {
-                LaunchCommand.execute();
-                self.is_running = false;
-            },
             _ => self.tabs[self.selected_tab].handle_key(key)
         }
     }

@@ -3,8 +3,8 @@ use std::io;
 use std::path::Path;
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use crate::core::downloader::download_structs::Library;
-use crate::core::downloader::downloader::{download_files_concurrently, DownloaderTracking};
+use crate::downloader::download_structs::Library;
+use crate::downloader::downloader::{download_files_concurrently, DownloaderTracking};
 
 pub struct LibraryDownloader;
 

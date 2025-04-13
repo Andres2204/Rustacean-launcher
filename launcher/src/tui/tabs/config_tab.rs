@@ -175,17 +175,17 @@ impl ConfigTab {
     // config items
     fn handle_config_item(&mut self, up: bool, value: i32) {
         match &self.config[self.selected_config].config_kind {
-            ConfigKind::List((mut index, opts)) => {
+            &ConfigKind::List((mut index, ref opts)) => {
                 if up {
                     if index < opts.len() { index += 1; }
                 } else {
                     if index > 0 { index -= 1; }
                 }
             }
-            ConfigKind::Active(mut active) => {
+            &ConfigKind::Active(mut active) => {
                 if active { active = false; } else { active = true; }
             }
-            ConfigKind::Value(((min, max), mut _val)) => {
+            &ConfigKind::Value(((ref min, ref max), mut _val)) => {
                 if value > *min && value < *max {
                     _val = value;
                 }

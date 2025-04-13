@@ -5,12 +5,12 @@ use std::time::Duration;
 use std::fs;
 use tokio::sync::Mutex;
 use tokio::time::sleep;
-use crate::core::downloader::download_structs::{AssetsJson, VersionJson, VersionType};
-use crate::core::downloader::downloader::{download_file, DownloaderTracking};
-use crate::core::launcher::launcher_config::LauncherConfig;
-use crate::core::versions::assets::AssetDownloader;
-use crate::core::versions::libraries::LibraryDownloader;
-use crate::core::versions::version::{Version, VersionState};
+use crate::downloader::download_structs::{AssetsJson, VersionJson, VersionType};
+use crate::downloader::downloader::{download_file, DownloaderTracking};
+use crate::launcher::launcher_config::LauncherConfig;
+use crate::versions::assets::AssetDownloader;
+use crate::versions::libraries::LibraryDownloader;
+use crate::versions::version::{Version, VersionState};
 
 pub struct VersionDownloader;
 impl VersionDownloader {
