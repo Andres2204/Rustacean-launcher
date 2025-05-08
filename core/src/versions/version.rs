@@ -1,9 +1,11 @@
 use crate::downloader::download_structs::{VersionJson, VersionType};
 use crate::versions::manifest::VersionInfo;
 use std::fmt::{Debug, Display, Formatter};
-use crate::versions::verifier::VersionVerifier;
-// TODO: trait -> normalversion, modpackversion, forgeversion (mod client)
+use std::io::{Error, ErrorKind};
 
+/*
+    TRAIT
+*/
 pub trait Version: Send + Sync {
     fn name(&self) -> String;
     fn set_name(&mut self, name: String);
@@ -41,7 +43,6 @@ impl Clone for Box<dyn Version> {
     fn clone(&self) -> Self {
         self.box_clone()
     }
-    
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -51,12 +52,15 @@ pub enum VersionState {
     VERIFYING,
 }
 
+/*
+    IMPLEMENTATIONS 
+*/
 #[derive(Debug, Clone)]
 pub struct StandardVersion {
     name: String,
-    version_type: VersionType,
     url: String,
     state: VersionState,
+    version_type: VersionType,
 }
 impl StandardVersion {
     pub fn new(name: &str, version_type: VersionType, url: &str, state: VersionState) -> Self {
@@ -115,3 +119,73 @@ impl Version for StandardVersion {
     }
 }
 
+/*
+    BUILDER
+*/
+#[derive(Debug)]
+pub struct VersionBuilder {
+    name: Option<String>,
+    url: Option<String>,
+    state: Option<VersionState>,
+    version_type: VersionType,
+}
+
+const BUILDER_TEMPLATE: VersionBuilder = VersionBuilder {
+    name: None,
+    url: None,
+    state: None,
+    version_type: VersionType::RELEASE,
+};
+impl VersionBuilder {
+    pub fn realease() -> Self {
+        Self { .. BUILDER_TEMPLATE }
+    }
+    
+    pub fn snapshot() -> Self {
+        Self {
+            version_type: VersionType::SNAPSHOT,
+            .. BUILDER_TEMPLATE
+        }
+    }
+    
+    pub fn default() -> Self {
+       Self::realease()
+   }
+}
+
+impl VersionBuilder {
+    pub fn name(mut self, name: &str) -> Self {
+        self.name = Some(name.to_string());
+        self
+    }
+    
+    pub fn url(mut self, url: &str) -> Self {
+        self.url = Some(url.to_string());
+        self
+    }
+    
+    pub fn state(mut self, state: VersionState) -> Self {
+        self.state = Some(state);
+        self
+    }
+    
+    
+    pub fn build(self) -> Result<Box<dyn Version>, Error> {
+        match self.version_type {
+            VersionType::RELEASE => {
+                if self.name.is_none() { return Err(Error::new(ErrorKind::Other, "No name given")) }
+                Ok(Box::new(StandardVersion {
+                    name: self.name.unwrap(),
+                    url: self.url.unwrap_or(String::new()),
+                    state: self.state.unwrap(),
+                    version_type: VersionType::RELEASE
+                }))
+            }
+            _ => { Err(Error::new(ErrorKind::Other, "VersionBuilder requires version type.")) }
+            //VersionType::SNAPSHOT => {}
+            //VersionType::OldBeta => {}
+            //VersionType::OldAlpha => {}
+        }
+
+    }
+}

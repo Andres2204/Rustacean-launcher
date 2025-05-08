@@ -2,13 +2,13 @@ use std::path::Path;
 use std::process::Stdio;
 use crate::downloader::download_structs::{VersionJson, Arguments};
 use crate::launcher::launcher_config::LauncherConfig;
-use crate::versions::version::Version;
-use crate::user::offline_user::OfflineUser;
+use crate::versions::Version;
+use crate::users::User;
 
 // TODO: is public!!
 pub struct MinecraftLauncher {
     pub version: Box<dyn Version>,
-    pub user: OfflineUser,
+    pub user: Box<dyn User>,
     pub launcher_config: LauncherConfig
 }
 
@@ -45,7 +45,7 @@ impl MinecraftLauncher {
         // println!("Classpath: {}", classpath);
 
         let java_path = "/home/andres/.jdks/openjdk-23.0.1/bin/java"; // TODO
-        let username = self.user.name.clone();
+        let username = self.user.username().clone();
         let binding = minecraft_path.clone();
         let game_dir = Path::new(&binding);
         let assets_dir = Path::new(&minecraft_path)
@@ -54,7 +54,7 @@ impl MinecraftLauncher {
         println!(
             "Launching minecraft with:
             java: {java_path}
-            user: {username}
+            users: {username}
             game_dir: {game_dir:?}
             assets_dir: {:?}
             assets_index: {:?}

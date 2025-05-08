@@ -5,3 +5,5 @@ mod libraries;
 mod assets;
 mod verifier;
 mod downloader;
+
+pub use version::{Version, VersionState};

@@ -1,18 +1,14 @@
 use std::fs;
-use std::{io, io::copy};
+use std::{io};
 use std::collections::HashMap;
-use std::fs::File;
-use std::io::{Cursor, Read};
 use std::path::{Path};
 use std::sync::Arc;
-use std::time::Duration;
 use futures_util::future::join_all;
 use futures_util::StreamExt;
 use reqwest::Client;
 use tokio::sync::{Mutex, Semaphore};
 use tokio::{fs::File as AsyncFile, task};
 use tokio::io::AsyncWriteExt;
-use tokio::time::sleep;
 
 #[derive(Debug)]
 pub struct DownloaderTracking {
@@ -196,9 +192,9 @@ pub async fn download_files_concurrently(
 
 // TODO: TRACK ALL THE FILES DOWNLOADS
 pub async fn download_files_secuentialy(
-    files: HashMap<String, String>,
-    reqwest_client: Option<&Client>,
-    progress: Option<Arc<Mutex<(usize, usize)>>>
+    _files: HashMap<String, String>,
+    _reqwest_client: Option<&Client>,
+    _progress: Option<Arc<Mutex<(usize, usize)>>>
 ) {
     unimplemented!("[File dowloader secuentialy] Not implemented ")
 }

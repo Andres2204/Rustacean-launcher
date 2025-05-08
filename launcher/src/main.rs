@@ -1,14 +1,10 @@
-use std::error::Error;
 use std::io;
 use env_logger::init;
-
-use core;
 mod tui;
-use crate::core::downloader::download_structs::VersionType;
+use core;
+use std::error::Error;
 use crate::core::launcher::launcher_config::{LauncherConfig, Ui};
-use crate::core::versions::version::{StandardVersion, Version, VersionState};
-use crate::core::versions::version_manager::VersionManager;
-// TODO: descargar los jdks necesarios y guardarlos en una carpeta
+use crate::core::versions::version::{VersionBuilder, Version, VersionState};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
@@ -35,20 +31,17 @@ async fn main() -> Result<(), Box<dyn Error>> {
 }
 
 async fn test_dowload() -> io::Result<()> {
-    let v: Box<dyn Version> = Box::new(StandardVersion::new(
-        "1.19.3",
-        VersionType::RELEASE,
-        "https://piston-meta.mojang.com/v1/packages/526571ff4d3513ff70d59c72ad525f5cc3c0db4d/1.19.3.json",
-        VersionState::INSTALLED(false)
-    ));
+    let _v: Box<dyn Version> = VersionBuilder::realease()
+        .name("1.19.3")
+        .url("https://piston-meta.mojang.com/v1/packages/526571ff4d3513ff70d59c72ad525f5cc3c0db4d/1.19.3.json")
+        .state(VersionState::INSTALLED(false))
+        .build()?;
+
     // let res = VersionManager::verify_version_installation(v);
     // println!("Verify response: {:?}", res);
     // VersionManager::download_version(v, /* Arc<tokio::sync::Mutex<DownloaderTracking>> */).await?;
     Ok(())
 }
-
-// TODO: REFINE THE VersionJson Structs
-// TODO: quitar exceso de clonaciones para libraries, modulaizar
 
 /*
 minecraft/
@@ -79,6 +72,4 @@ minecraft/
     └── <version>/                            # Directorio específico de la versión (por ejemplo, "1.20.1")
         ├── <version>.json                    # Archivo JSON de la versión descargado (por ejemplo, "1.20.1.json")
         └── client.jar                        # Archivo `client.jar` de la versión específica
-
-
 */

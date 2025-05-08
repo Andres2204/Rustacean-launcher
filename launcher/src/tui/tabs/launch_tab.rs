@@ -15,7 +15,7 @@ use tokio::sync::Mutex;
 use tui_widget_list::{ListBuilder, ListState, ListView};
 use crate::core::launcher::launcher::MinecraftLauncher;
 use crate::core::launcher::launcher_config::LauncherConfig;
-use crate::core::user::offline_user::OfflineUser;
+use crate::core::users::{UserBuilder, UserType};
 
 #[derive(Clone, Default)]
 pub struct LaunchTab {
@@ -126,9 +126,7 @@ impl Tab for LaunchTab {
                 if self.selected_version.is_some() {
                     let ml = MinecraftLauncher {
                         version: self.selected_version.clone().unwrap(),
-                        user: OfflineUser {
-                            name: "AndresGamer4444".to_string(),
-                        },
+                        user: Box::new(UserBuilder::default()),
                         launcher_config: LauncherConfig::import_config(),
                     };
                     ml.launch_minecraft().unwrap()
