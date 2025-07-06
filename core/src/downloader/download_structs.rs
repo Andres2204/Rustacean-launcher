@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
+use crate::launcher::launcher_config::LauncherConfig;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum VersionType {
@@ -43,9 +44,9 @@ impl VersionJson {
 
         let mut content = String::new();
         file.read_to_string(&mut content)
-            .expect("Failed to read launcher_config.json");
+            .expect("Failed to read launcher_profiles.json");
         let json: VersionJson =
-            serde_json::from_str(&content).expect("Failed to parse launcher_config.json");
+            serde_json::from_str(&content).expect("Failed to parse launcher_profiles.json");
         json
     }
 }
@@ -59,8 +60,19 @@ impl VersionJson {
         self.libraries.clone()
     }
 
-    pub fn get_asset(&self) -> AssetIndex {
+    pub fn get_asset_index(&self) -> AssetIndex {
         self.asset_index.clone()
+    }
+    
+    pub fn get_assets_json(&self) -> AssetsJson {
+        let assets = AssetsJson::from_local(
+            Path::new(&LauncherConfig::import_config().minecraft_path)
+                .join("assets")
+                .join("indexes")
+                .join(format!("{}.json", self.asset_index.id).as_str())
+                .as_path(),
+        );
+        assets
     }
     
     pub fn get_type(&self) -> VersionType {
@@ -167,7 +179,7 @@ pub struct AssetIndex {
     pub url: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct AssetsJson {
     pub objects: std::collections::HashMap<String, Asset>,
 }
@@ -176,9 +188,9 @@ impl AssetsJson {
         let mut file = File::open(assets_path).expect("Failed to open assets.json");
         let mut content = String::new();
         file.read_to_string(&mut content)
-            .expect("Failed to read launcher_config.json");
+            .expect("Failed to read launcher_profiles.json");
         let json: AssetsJson =
-            serde_json::from_str(&content).expect("Failed to parse launcher_config.json");
+            serde_json::from_str(&content).expect("Failed to parse launcher_profiles.json");
         json
     }
 }

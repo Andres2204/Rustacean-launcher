@@ -1,23 +1,24 @@
 use crate::downloader::download_structs::VersionType;
 use crate::downloader::downloader::DownloaderTracking;
-use crate::launcher::launcher_config::LauncherConfig;
+use crate::launcher::launcher_config::{LauncherConfig};
 use crate::versions::downloader::VersionDownloader;
 use crate::versions::manifest::Manifest;
 use crate::versions::verifier::VersionVerifier;
 use crate::versions::version::{StandardVersion, Version};
-use std::{io, fs};
 use std::path::Path;
 use std::sync::Arc;
+use std::{fs, io};
+use log;
 use tokio::sync::Mutex;
 
-pub struct VersionManager {}
+pub struct VersionManager;
 
 impl VersionManager {
     pub async fn fetch_versions() -> io::Result<Vec<Box<dyn Version>>> {
         let versions = match Self::versions_by_manifest().await {
             Ok(versions) => versions,
             Err(e) => {
-                eprintln!("{e}");
+                log::error!("{e}");
                 Self::versions_local().await?
             }
         };
@@ -25,23 +26,30 @@ impl VersionManager {
     }
 
     async fn versions_by_manifest() -> io::Result<Vec<Box<dyn Version>>> {
-        let manifest =
-            Manifest::get_version_manifest(&*LauncherConfig::import_config().version_manifest_link)
-                .await?;
-        let versions_info = manifest.get_all_version_ref();
-        let versions: Vec<Box<dyn Version>> = versions_info
+        let config = LauncherConfig::import_config();
+        let manifest = Manifest::get_version_manifest(&config.version_manifest_link).await?;
+
+        let settings = match config.settings() {
+            Some(s) => s,
+            None => return Ok(vec![]), // o maneja el error de forma apropiada
+        };
+
+        let versions: Vec<Box<dyn Version>> = manifest
+            .get_all_version_ref()
             .iter()
-            .map(|v| match v.version_type {
-                VersionType::RELEASE
-                | VersionType::SNAPSHOT
-                | VersionType::OldBeta
-                | VersionType::OldAlpha => {
-                    let mut sv: Box<dyn Version> = Box::new(StandardVersion::from(v));
-                    VersionVerifier::is_installed(&mut sv);
-                    sv
-                }
+            .filter(|v| match v.version_type {
+                VersionType::RELEASE => true,
+                VersionType::SNAPSHOT => settings.allowSnapshot,
+                VersionType::OldBeta => settings.allowBeta,
+                VersionType::OldAlpha => settings.allowAlpha,
+            })
+            .map(|v| { // TODO: manage the versions types
+                let mut version: Box<dyn Version> = Box::new(StandardVersion::from(v));
+                VersionVerifier::is_installed(&mut version);
+                version
             })
             .collect();
+
         Ok(versions)
     }
 
@@ -54,12 +62,11 @@ impl VersionManager {
         )
         .expect("Cant read versions directory");
 
-        for path in versions_list { // TODO: multithread
+        for path in versions_list {
+            // TODO: multithread
             versions.push(VersionVerifier::from_local(
-                path.unwrap()
-                    .file_name()
-                    .into_string()
-                    .unwrap())?)
+                path.unwrap().file_name().into_string().unwrap(),
+            )?)
         }
         Ok(versions)
     }
@@ -69,12 +76,12 @@ impl VersionManager {
     }
 
     pub async fn download_version(
-        mut version: Box<(dyn Version + 'static)>,
+        version: Box<(dyn Version + 'static)>,
         progress: Arc<Mutex<DownloaderTracking>>,
     ) -> io::Result<()> {
         //if VersionVerifier::is_installed(&mut version) {
         // TODO: verify version.jsn sha256 or download, verify installation
-        //    return Ok(());
+        //    return Ok(())
         //}
         let progress_clone = progress.clone();
         VersionDownloader::download_version(version, progress_clone)
@@ -85,5 +92,9 @@ impl VersionManager {
 
     pub fn verify_version_installation(mut version: Box<(dyn Version + 'static)>) -> bool {
         VersionVerifier::verify_installation(&mut version)
+    }
+
+    pub fn delete_version(mut version: Box<(dyn Version + 'static)>) -> Option<Box<dyn Version>> {
+        todo!("delete_version() not implemented yet")
     }
 }

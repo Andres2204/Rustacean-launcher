@@ -1,0 +1,71 @@
+{
+  "minecraft_path": "/home/andres/RustroverProjects/rustacean_launcher/Minecraft",
+  "version_manifest_link": "https://launchermeta.mojang.com/mc/game/version_manifest.json",
+  "ui": "TUI",
+
+  "profiles": {
+    "Vanilla": {
+      "name": "Vanilla",
+      "type": "custom",
+      "created": "2023-01-01T12:00:00.000Z",
+      "lastUsed": "2023-06-25T19:30:00.000Z",
+      "lastVersionId": "1.20.1",
+      "gameDir": "C:\\Users\\andres\\AppData\\Roaming\\.minecraft",
+      "javaDir": "C:\\Program Files\\Java\\jdk-17\\bin\\javaw.exe",
+      "javaArgs": "-Xmx4G -Xms2G -XX:+UseG1GC",
+      "resolution": {
+        "width": 1280,
+        "height": 720
+      },
+      "icon": "Grass",
+      "useLatestVersion": true
+    },
+    "Forge Modded": {
+      "name": "Forge Modded",
+      "type": "custom",
+      "created": "2023-02-01T09:00:00.000Z",
+      "lastUsed": "2023-06-24T18:00:00.000Z",
+      "lastVersionId": "1.20.1-forge-47.1.0",
+      "gameDir": "D:\\Minecraft\\modpacks\\forge",
+      "javaDir": "C:\\Program Files\\Java\\jdk-17\\bin\\javaw.exe",
+      "javaArgs": "-Xmx6G -Xms4G -Dfml.queryResult=confirm",
+      "resolution": {
+        "width": 1920,
+        "height": 1080
+      },
+      "icon": "Furnace",
+      "useLatestVersion": false
+    }
+  },
+  "settings": {
+    "crashAssistance": true,
+    "enableAdvanced": true,
+    "keepLauncherOpen": false,
+    "showGameLog": true,
+    "allowSnapshot": false,
+    "allowBeta": false,
+    "allowAlpha": false,
+    "useNativeLauncher": true,
+    "profileSorting": "LastUsed"
+  },
+  "launcherVersion": {
+    "name": "2.8.2",
+    "format": 21,
+    "profilesFormat": 2
+  },
+  "selectedUser": {
+    "account": "andres_mc"
+  },
+  "authenticationDatabase": {
+    "andres_mc": {
+      "displayName": "Andresito",
+      "accessToken": "1234567890abcdef1234567890abcdef",
+      "userid": "12345678-90ab-cdef-1234-567890abcdef",
+      "uuid": "abcdef12-3456-7890-abcd-ef1234567890",
+      "username": "andres_mc",
+      "xuid": "2535423454567890",
+      "userType": "msa"
+    }
+  },
+  "clientToken": "abc12345-def6-7890-abcd-1234567890ab"
+}

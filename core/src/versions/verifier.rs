@@ -31,7 +31,7 @@ impl VersionVerifier {
                 Path::new(&minecraft_path)
                     .join("assets")
                     .join("indexes")
-                    .join(format!("{}.json", &version_json.get_asset().id).as_str())
+                    .join(format!("{}.json", &version_json.get_asset_index().id).as_str())
                     .as_path()
             )
             .get_assets_directories()
@@ -56,13 +56,13 @@ impl VersionVerifier {
         let assets_number = assets_paths.len();
         let libraries_number = libraries_paths.len();
         let mut verified = 0usize;
-        println!("Verifying Minecraft version.
+        log::info!("Verifying Minecraft version.
             assets: {assets_number}, libraries: {libraries_number}");
 
         // verify assets
         for path in &assets_paths {
             if !path.as_path().exists() {
-                println!("Assets path does not exist: {:?}", path);
+                log::info!("Assets path does not exist: {:?}", path);
                 return false;
             }
             verified += 1;
@@ -71,12 +71,12 @@ impl VersionVerifier {
         // verify libraries
         for path in &libraries_paths {
             if !path.as_path().exists() {
-                println!("Library path does not exist: {:?}", path);
+                log::info!("Library path does not exist: {:?}", path);
                 return false;
             }
             verified += 1;
         }
-        println!("Verified {verified} files");
+        log::info!("Verified {verified} files");
         true
     }
     pub fn from_local(name: String) -> io::Result<Box<(dyn Version + 'static)>> {

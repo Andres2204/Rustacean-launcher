@@ -12,3 +12,4 @@ ratatui = { version="0.29.0" }
 tui-widget-list = "0.13.2"
 color-eyre = "0.6.3"
 env_logger = "0.11.6"
+log = "0.4.25"

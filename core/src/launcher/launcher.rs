@@ -5,17 +5,14 @@ use crate::launcher::launcher_config::LauncherConfig;
 use crate::versions::Version;
 use crate::users::User;
 
-// TODO: is public!!
 pub struct MinecraftLauncher {
-    pub version: Box<dyn Version>,
-    pub user: Box<dyn User>,
-    pub launcher_config: LauncherConfig
+    version: Box<dyn Version>,
+    user: Box<dyn User>,
+    launcher_config: LauncherConfig
 }
 
 impl MinecraftLauncher {
-    pub fn launch_minecraft(
-        &self,
-    ) -> std::io::Result<()> {
+    pub fn launch_minecraft(&self) -> std::io::Result<()> {
         // TODO: java -Xmx8G -Djava.library.path=C:\Minecraft\natives -cp "C:\Minecraft\libraries\lib1.jar;C:\Minecraft\libraries\lib2.jar;C:\Minecraft\versions\1.21.3&self, &self, \client.jar" net.minecraft.client.main.Main --username "MiUsuarioOffline" --version "1.21.3" --gameDir "C:\Minecraft" --assetsDir "C:\Minecraft\assets" --assetIndex "1.21.3" --uuid "OfflineUUID" --accessToken "OfflineAccessToken" --userType "legacy"
         let LauncherConfig {minecraft_path, ..} = &self.launcher_config;
         
@@ -34,14 +31,14 @@ impl MinecraftLauncher {
                     .join(library.get_path()).as_path().to_str().unwrap().to_string()
             }
         ).collect();
-        println!("Natives found: {count}");
+        log::info!("Natives found: {count}");
         
         let client_jar = Path::new(&minecraft_path)
             .join("versions")
             .join(self.version.name())
             .join(format!("{}.jar", self.version.name()).as_str());
         
-        let classpath = build_classpath(client_jar.as_path(), libraries);
+        let classpath = Self::build_classpath(client_jar.as_path(), libraries);
         // println!("Classpath: {}", classpath);
 
         let java_path = "/home/andres/.jdks/openjdk-23.0.1/bin/java"; // TODO
@@ -51,7 +48,7 @@ impl MinecraftLauncher {
         let assets_dir = Path::new(&minecraft_path)
             .join("assets");
 
-        println!(
+        log::info!(
             "Launching minecraft with:
             java: {java_path}
             users: {username}
@@ -61,7 +58,7 @@ impl MinecraftLauncher {
             client_jar. {:?}
             version: {:?}
             ", &assets_dir.as_path(),
-            &version_json.get_asset().id,
+            &version_json.get_asset_index().id,
             client_jar.as_path(),
             self.version.name().clone()
         );
@@ -70,7 +67,7 @@ impl MinecraftLauncher {
         // TODO: https://minecraft.fandom.com/wiki/Client.json
         // Construye el comando para ejecutar Minecraft
         let mut command = std::process::Command::new(java_path);
-        println!("Command created {:?}", command);
+        log::info!("Command created {:?}", command);
         command
             // jvm args
             //.arg(format!("-Djava.library.path={}", Path::new(&minecraft_path.clone()).join("libraries").as_path().to_str().unwrap())) // Ruta de las bibliotecas nativas
@@ -84,7 +81,7 @@ impl MinecraftLauncher {
             .arg("--version").arg(&self.version.name()) // Versión
             .arg("--gameDir").arg(game_dir) // Directorio del juego
             .arg("--assetsDir").arg(assets_dir) // Directorio de assets
-            .arg("--assetIndex").arg(version_json.get_asset().id) // Índice de assets para la versión
+            .arg("--assetIndex").arg(version_json.get_asset_index().id) // Índice de assets para la versión
             .arg("--accessToken").arg("notokenxd")
             .arg("--userType").arg("legacy")
             .stdout(Stdio::inherit())
@@ -92,25 +89,71 @@ impl MinecraftLauncher {
 
         // Ejecuta el comando y maneja posibles errores
         let status = command.spawn()?.wait()?;
-        
-        println!("Minecraft finished with status {:?}", status);
+
+        log::info!("Minecraft finished with status {:?}", status);
         if status.success() {
-            println!("Minecraft ha finalizado correctamente.");
+            log::info!("Minecraft ha finalizado correctamente.");
         } else {
-            eprintln!("Error al iniciar Minecraft.");
+            log::error!("Error al iniciar Minecraft.");
         }
         Ok(())
     }
+
+    fn build_classpath(client_jar_path: &Path, libraries: Vec<String>) -> String {
+        // Delimitador para classpath: `:` en Unix y `;` en Windows
+        let delimiter = if cfg!(target_os = "windows") { ";" } else { ":" };
+        // println!("Class path delimiter: {}", delimiter);
+
+        // Construye el classpath con client.jar y todas las bibliotecas
+        let mut classpath = libraries.join(delimiter);
+        classpath.push_str(delimiter);
+        classpath.push_str(client_jar_path.to_str().unwrap());
+        classpath
+    }
 }
 
-pub fn build_classpath(client_jar_path: &Path, libraries: Vec<String>) -> String {
-    // Delimitador para classpath: `:` en Unix y `;` en Windows
-    let delimiter = if cfg!(target_os = "windows") { ";" } else { ":" };
-    // println!("Class path delimiter: {}", delimiter);
-
-    // Construye el classpath con client.jar y todas las bibliotecas
-    let mut classpath = libraries.join(delimiter);
-    classpath.push_str(delimiter);
-    classpath.push_str(client_jar_path.to_str().unwrap());
-    classpath
+pub struct LauncherBuilder {
+    version: Option<Box<dyn Version>>,
+    user: Option<Box<dyn User>>
 }
+
+impl LauncherBuilder {
+    pub fn default() -> MinecraftLauncher {
+        todo!();
+        /*
+        MinecraftLauncher {
+            version: Lastest dowload version or cached,
+            user: Cached user or offline defualt,
+            launcher_config: idk,
+        }
+        */
+    }
+    
+    pub fn new() -> Self {
+        LauncherBuilder {
+            version: None,
+            user: None,
+        }
+    }
+}
+
+impl LauncherBuilder {
+    pub fn version(mut self, version: Box<dyn Version>) -> Self {
+        self.version = Some(version);
+        self
+    }
+    
+    pub fn user(mut self, user: Box<dyn User>) -> Self {
+        self.user = Some(user);
+        self
+    }
+    
+    pub fn build(self) -> MinecraftLauncher {
+        MinecraftLauncher {
+            version: self.version.unwrap(),
+            user: self.user.unwrap(),
+            launcher_config: LauncherConfig::import_config()
+        }
+    }
+}
+

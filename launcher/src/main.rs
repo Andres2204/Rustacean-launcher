@@ -1,45 +1,42 @@
-use std::io;
-use env_logger::init;
+use std::env;
 mod tui;
 use core;
 use std::error::Error;
+use std::sync::{Arc};
+use tokio::sync::Mutex;
 use crate::core::launcher::launcher_config::{LauncherConfig, Ui};
-use crate::core::versions::version::{VersionBuilder, Version, VersionState};
+use crate::core::versions::{
+    version::{
+        VersionBuilder,
+        VersionState
+    },
+    version_manager::VersionManager
+};
+use crate::core::downloader::downloader::DownloaderTracking;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
+    unsafe { env::set_var("RUST_LOG", "off"); }
+    env_logger::init();
+    
+    
     if let Ui::TUI = LauncherConfig::import_config().ui {
-       println!("Starting tui...");
+       log::info!("Starting tui...");
        tui::app::Tui::new().run_tui().expect("[MAIN/RATATUI] Failed to run UI");
     }
     
-    // init();
-    // test_dowload().await?;
-    // let versions = VersionManager::fetch_versions().await?;
-    // versions.into_iter().for_each(|v| {println!("{v}")});
-    // LaunchCommand.execute();
     
-    // progress_file_download(
-    //     "https://piston-data.mojang.com/v1/objects/977727ec9ab8b4631e5c12839f064092f17663f8/client.jar",
-    //     "/home/andres/Descargas/client.jar"
-    // ).await?;
-    
-    // let versions = VersionManager::fetch_versions().await?;
-    // println!("{:#?}", versions);
-    
-    Ok(())
-}
+    let progress = Arc::new(Mutex::new(DownloaderTracking::default()));
+    VersionManager::download_version(
+        VersionBuilder::default()
+            .name("1.21.3")
+            .url("https://piston-meta.mojang.com/v1/packages/b64c551553e59c369f4a3529b15c570ac6b9b73e/1.21.3.json")
+            .state(VersionState::INSTALLED(false))
+            .build()
+            .unwrap(),
+        progress.clone()
+    ).await.expect("failed to download version");
 
-async fn test_dowload() -> io::Result<()> {
-    let _v: Box<dyn Version> = VersionBuilder::realease()
-        .name("1.19.3")
-        .url("https://piston-meta.mojang.com/v1/packages/526571ff4d3513ff70d59c72ad525f5cc3c0db4d/1.19.3.json")
-        .state(VersionState::INSTALLED(false))
-        .build()?;
-
-    // let res = VersionManager::verify_version_installation(v);
-    // println!("Verify response: {:?}", res);
-    // VersionManager::download_version(v, /* Arc<tokio::sync::Mutex<DownloaderTracking>> */).await?;
     Ok(())
 }
 

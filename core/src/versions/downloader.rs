@@ -1,4 +1,4 @@
-use std::io;
+use std::{io, thread};
 use std::path::Path;
 use std::sync::Arc;
 use std::time::Duration;
@@ -15,9 +15,10 @@ use crate::versions::version::{Version, VersionState};
 pub struct VersionDownloader;
 impl VersionDownloader {
     pub async fn download_version(
-        mut version: Box<dyn Version + 'static>,
+        version: Box<dyn Version + 'static>,
         progress: Arc<Mutex<DownloaderTracking>>,
     ) -> io::Result<()> {
+        log::info!("Matching version type: {:?}", version.version_type());
         match version.version_type() {
             VersionType::RELEASE
             | VersionType::SNAPSHOT
@@ -26,78 +27,75 @@ impl VersionDownloader {
         }
     }
 
-    async fn download_standard(mut version: Box<dyn Version + 'static>, mut progress: Arc<Mutex<DownloaderTracking>>) -> io::Result<()> {
+    async fn download_standard(mut version: Box<dyn Version + 'static>, progress: Arc<Mutex<DownloaderTracking>>) -> io::Result<()> {
+        
+        log::info!("Download_standard version: {:?}", version);
+        
+        // Initialize variables
         version.set_state(VersionState::DOWNLOADING);
         let config = LauncherConfig::import_config();
-        Self::download_initial_files(&version).await?;
-
+        
         // version json local
         let minecraft_path = config.minecraft_path.clone();
         let version_json = VersionJson::get_from_local(minecraft_path.clone(), version.name());
-
-        let asset_index = version_json.get_asset();
-        let assets = AssetsJson::from_local(
-            Path::new(&config.minecraft_path)
-                .join("assets")
-                .join("indexes")
-                .join(format!("{}.json", asset_index.id).as_str())
-                .as_path(),
-        );
-        let total_assets = assets.objects.len();
+        
+        //  Calculate total of files to download and set value to progress
+        let assets_json = version_json.get_assets_json();
+        let total_assets = assets_json.clone().objects.len();
         let total_libraries = version_json.get_libraries().len();
+        
+        // calculate total of files
         let total_objects: usize = total_libraries + total_assets;
-        println!("assets: {total_assets}, lib: {total_libraries}, t: {total_objects}");
-        sleep(Duration::from_secs(1)).await;
-
+        log::info!("assets: {total_assets}, lib: {total_libraries}, t: {total_objects}");
+        
+        //  Spawn threads
+        
         progress.lock().await.set_progress((0usize, total_objects));
-        let library_progress = Arc::new(Mutex::new(DownloaderTracking::new((0, total_libraries))));
-        let lib_progress_clone = Arc::clone(&library_progress);
-
+        log::info!("Starting progress: {:?}", progress.lock().await);
+        
+        thread::sleep(Duration::from_secs(2));
+        let vc = version.clone();
+        thread::spawn(async move || {
+            Self::download_initial_files(&vc).await;
+        });
+        
+               
+        log::info!("Downloading libraries ............");
         let mut mine_path_clone = minecraft_path.clone();
+        let libraries_progress = progress.clone();
         tokio::spawn(async move {
             LibraryDownloader::download_libraries(
                 version_json.get_libraries().clone(),
                 Path::new(&mine_path_clone),
-                Some(lib_progress_clone),
+                Some(libraries_progress),
             )
                 .await
                 .expect("can't download libraries");
             
         });
         
-        let asset_progress = Arc::new(Mutex::new(DownloaderTracking::new((0, total_assets))));
-        let asset_progress_clone = Arc::clone(&asset_progress);
+        
+        log::info!("Downloading Assets ---------");
         mine_path_clone = minecraft_path.clone();
+        let asset_progress = progress.clone();
         tokio::spawn(async move {
             AssetDownloader::download_assets(
-                assets,
+                assets_json,
                 Path::new(&mine_path_clone),
-                Some(asset_progress_clone),
+                Some(asset_progress),
             )
                 .await
                 .expect("cant download assets");
         });
-        
-        println!("asset progress: {:?}", asset_progress.lock().await);
-        sleep(Duration::from_secs(1)).await;
-        
-        
-        let mut cached_progress = 0usize;
+
         loop {
-            let mut main_progress = progress.lock().await;
-            let library_progress_guard = library_progress.lock().await;
-            let asset_progress_guard = asset_progress.lock().await;
-            
-            let temp_progress = library_progress_guard.actual_progress() + asset_progress_guard.actual_progress();
-            main_progress.set_actual_progress(temp_progress);// TODO: .add_to_progress(usize) -> progress.0 += 1
-            if main_progress.actual_progress() != cached_progress {
-                println!(" <> --- {main_progress:?} --- <>");
-                cached_progress = main_progress.actual_progress(); // TODO: actual_progress -> return progress.0
-            }
-            if main_progress.finished() {
+            let p = progress.lock().await;
+            log::info!("ACTUAL PROGRESS: {:?}  UNITS: {:?}", p.progress(), p.units().len());
+            if p.finished() {
                 break;
             }
         }
+        // Wait until finish
 
         version.set_state(VersionState::INSTALLED(true));
         Ok(())
@@ -106,7 +104,7 @@ impl VersionDownloader {
     async fn download_initial_files(version: &Box<dyn Version + 'static>) -> io::Result<()> {
         let LauncherConfig { minecraft_path, .. } = LauncherConfig::import_config();
         match fs::create_dir_all(minecraft_path.clone()) {
-            Ok(e) => println!("Directory created {:?}", e),
+            Ok(e) => log::info!("Directory created {:?}", e),
             _ => {}
         }
 
@@ -121,7 +119,7 @@ impl VersionDownloader {
 
         // download asset index json
         let version_json = VersionJson::get_from_local(minecraft_path.clone(), version_name.clone());
-        let assets_index = version_json.get_asset();
+        let assets_index = version_json.get_asset_index();
         download_file(
             assets_index.url.as_str(),
             Path::new(&minecraft_path)

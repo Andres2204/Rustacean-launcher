@@ -24,8 +24,7 @@ impl LibraryDownloader {
             }
         );
         
-        println!("Downloading libraries... {}", map.len());
-        //map.into_iter().for_each(|v| println!("{v:?}"));
+        log::info!("Downloading libraries... {}", map.len());
         download_files_concurrently(map, None, progress).await.expect("Failed to download the files");
         Ok(())
     }

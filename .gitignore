@@ -19,7 +19,7 @@ target/
 /Minecraft
 /logs
 /.idea
-launcher_config.json
+launcher_profiles.json
 Analisis-Diseño.md
 Cargo.lock
 version_manifest.json

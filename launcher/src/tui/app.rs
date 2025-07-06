@@ -207,7 +207,7 @@ impl Tui {
         app.run_app(&mut self.terminal).expect("[APP/run_tui] Error running app");
 
         if let Err(err) = self.restore_tui() {
-            eprintln!(
+            log::error!(
                 "failed to restore terminal. Run `reset` or restart your terminal to recover: {}",
                 err
             );
