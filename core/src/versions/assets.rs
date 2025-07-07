@@ -4,12 +4,12 @@ use std::path::Path;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use crate::downloader::download_structs::AssetsJson;
-use crate::downloader::downloader::{download_files_concurrently, DownloaderTracking};
+use crate::downloader::downloader::{download_files_concurrently, DownloaderTracking, FileData};
 
 pub struct AssetDownloader;
 impl AssetDownloader {
     pub async fn download_assets(assets: AssetsJson, minecraft_path: &Path, progress: Option<Arc<Mutex<DownloaderTracking>>>)  -> io::Result<()> {
-        let mut map: HashMap<String, String> = HashMap::new();
+        let mut files: Vec<FileData> = Vec::new();
         let assets_dir = minecraft_path.join("assets").join("objects");
         
         assets.objects.into_iter().for_each(|object| {
@@ -18,10 +18,10 @@ impl AssetDownloader {
             let url = format!("https://resources.download.minecraft.net/{}", dir);
             let file_path = assets_dir.join(dir.clone());
             
-            map.insert(url, file_path.to_str().unwrap().to_string());
+            files.push(FileData::new(file_path.to_str().unwrap().to_string(), url, None));
         });
         
-        download_files_concurrently(map, None, progress).await?;
+        download_files_concurrently(files, None, progress).await?;
         Ok(())
     }
 }

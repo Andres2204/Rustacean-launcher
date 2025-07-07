@@ -78,7 +78,8 @@ impl VersionManager {
     pub async fn download_version(
         version: Box<(dyn Version + 'static)>,
         progress: Arc<Mutex<DownloaderTracking>>,
-    ) -> io::Result<()> {
+    ) -> io::Result<()> 
+    {
         //if VersionVerifier::is_installed(&mut version) {
         // TODO: verify version.jsn sha256 or download, verify installation
         //    return Ok(())

@@ -1,8 +1,13 @@
-use std::io;
 use crate::downloader::download_structs::{AssetsJson, VersionJson, VersionType};
 use crate::launcher::launcher_config::LauncherConfig;
 use crate::versions::version::{StandardVersion, Version, VersionState};
+use std::io;
 use std::path::{Path, PathBuf};
+use sha1::{Sha1, Digest};
+use std::fs::File;
+use std::io::{BufReader, Read};
+use hex;
+
 
 pub struct VersionVerifier;
 impl VersionVerifier {
@@ -20,7 +25,7 @@ impl VersionVerifier {
         version.set_state(VersionState::INSTALLED(false));
         false
     }
-    
+
     // TODO: mejorar verificador con sha256
     pub fn verify_installation(version: &mut Box<(dyn Version + 'static)>) -> bool {
         // TODO: version file an client sha256
@@ -32,14 +37,18 @@ impl VersionVerifier {
                     .join("assets")
                     .join("indexes")
                     .join(format!("{}.json", &version_json.get_asset_index().id).as_str())
-                    .as_path()
+                    .as_path(),
             )
             .get_assets_directories()
             .into_iter()
-            .map(|p| Box::new(Path::new(&minecraft_path)
-                .join("assets")
-                .join("objects")
-                .join(p)))
+            .map(|p| {
+                Box::new(
+                    Path::new(&minecraft_path)
+                        .join("assets")
+                        .join("objects")
+                        .join(p),
+                )
+            })
             .collect()
         };
 
@@ -47,17 +56,23 @@ impl VersionVerifier {
             version_json
                 .get_libraries()
                 .into_iter()
-                .map(|l| Box::new(Path::new(&minecraft_path)
-                    .join("libraries")
-                    .join(l.get_path())))
+                .map(|l| {
+                    Box::new(
+                        Path::new(&minecraft_path)
+                            .join("libraries")
+                            .join(l.get_path()),
+                    )
+                })
                 .collect()
         };
 
         let assets_number = assets_paths.len();
         let libraries_number = libraries_paths.len();
         let mut verified = 0usize;
-        log::info!("Verifying Minecraft version.
-            assets: {assets_number}, libraries: {libraries_number}");
+        log::info!(
+            "Verifying Minecraft version.
+            assets: {assets_number}, libraries: {libraries_number}"
+        );
 
         // verify assets
         for path in &assets_paths {
@@ -81,23 +96,38 @@ impl VersionVerifier {
     }
     pub fn from_local(name: String) -> io::Result<Box<(dyn Version + 'static)>> {
         //TODO: adapt for forge, etc...
-        
-        let version_json = VersionJson::get_from_local(
-            LauncherConfig::import_config().minecraft_path,
-            name,
-        );
+
+        let version_json =
+            VersionJson::get_from_local(LauncherConfig::import_config().minecraft_path, name);
         match version_json.get_type() {
             VersionType::RELEASE
             | VersionType::SNAPSHOT
             | VersionType::OldBeta
-            | VersionType::OldAlpha => {
-                Ok(StandardVersion::from_local(version_json))
-            }
+            | VersionType::OldAlpha => Ok(StandardVersion::from_local(version_json)),
         }
     }
+
+    pub fn get_sha1(path: &Path) -> Result<String, Box<dyn std::error::Error>> {
+        let file = File::open(path)?;
+        let mut reader = BufReader::new(file);
+        let mut hasher = Sha1::new();
+        let mut buffer = [0; 1024];
+
+        loop {
+            let bytes_read = reader.read(&mut buffer)?;
+            if bytes_read == 0 {
+                break;
+            }
+            hasher.update(&buffer[..bytes_read]);
+        }
+
+        let result = hasher.finalize();
+        Ok(hex::encode(result))
+    }
+
 }
 
-// TODO: verify with sha256
+// TODO: verify with sha1
 fn verify_file(file: PathBuf) -> bool {
     !file.as_path().exists()
 }

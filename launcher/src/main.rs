@@ -2,40 +2,38 @@ use std::env;
 mod tui;
 use core;
 use std::error::Error;
-use std::sync::{Arc};
-use tokio::sync::Mutex;
-use crate::core::launcher::launcher_config::{LauncherConfig, Ui};
-use crate::core::versions::{
-    version::{
-        VersionBuilder,
-        VersionState
+
+use crate::core::launcher::{
+    launcher_config::{
+        LauncherConfig,
+        Ui
     },
-    version_manager::VersionManager
-};
-use crate::core::downloader::downloader::DownloaderTracking;
+    launcher::LauncherBuilder};
+use crate::core::users::UserBuilder;
+use crate::core::versions::version::*;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     unsafe { env::set_var("RUST_LOG", "off"); }
     env_logger::init();
-    
-    
+
     if let Ui::TUI = LauncherConfig::import_config().ui {
        log::info!("Starting tui...");
        tui::app::Tui::new().run_tui().expect("[MAIN/RATATUI] Failed to run UI");
     }
+
+    /*
+    let ml = LauncherBuilder::new()
+        .version(VersionBuilder::default()
+            .name("1.21.7")
+            .state(VersionState::INSTALLED(true))
+            .build().unwrap()
+        )
+        .user(UserBuilder::default_boxed())
+        .build();
+    ml.launch_minecraft().unwrap();
     
-    
-    let progress = Arc::new(Mutex::new(DownloaderTracking::default()));
-    VersionManager::download_version(
-        VersionBuilder::default()
-            .name("1.21.3")
-            .url("https://piston-meta.mojang.com/v1/packages/b64c551553e59c369f4a3529b15c570ac6b9b73e/1.21.3.json")
-            .state(VersionState::INSTALLED(false))
-            .build()
-            .unwrap(),
-        progress.clone()
-    ).await.expect("failed to download version");
+    */
 
     Ok(())
 }

@@ -128,6 +128,7 @@ pub struct Downloads {
 pub struct Download {
     path: Option<String>,
     url: String,
+    sha1: String
 }
 
 // TODO: Separar Natives y diferenciar por arquitectura
@@ -155,6 +156,10 @@ impl Library {
 
     pub fn get_path(&self) -> String {
         self.downloads.artifact.path.clone().unwrap()
+    }
+    
+    pub fn get_sha1(&self) -> String {
+        self.downloads.artifact.sha1.clone()
     }
 
     pub fn is_native(&self) -> bool {

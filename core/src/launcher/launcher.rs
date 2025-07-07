@@ -1,5 +1,6 @@
 use std::path::Path;
 use std::process::Stdio;
+use log::log;
 use crate::downloader::download_structs::{VersionJson, Arguments};
 use crate::launcher::launcher_config::LauncherConfig;
 use crate::versions::Version;
@@ -39,7 +40,7 @@ impl MinecraftLauncher {
             .join(format!("{}.jar", self.version.name()).as_str());
         
         let classpath = Self::build_classpath(client_jar.as_path(), libraries);
-        // println!("Classpath: {}", classpath);
+        log::debug!("Classpath: {}", classpath);
 
         let java_path = "/home/andres/.jdks/openjdk-23.0.1/bin/java"; // TODO
         let username = self.user.username().clone();

@@ -2,6 +2,7 @@ use futures_util::StreamExt;
 use futures_util::future::join_all;
 use reqwest::Client;
 use std::collections::HashMap;
+use std::error::Error;
 use std::fs;
 use std::io;
 use std::path::Path;
@@ -9,7 +10,7 @@ use std::sync::{Arc, RwLock};
 use tokio::io::AsyncWriteExt;
 use tokio::sync::{Mutex, Semaphore};
 use tokio::{fs::File as AsyncFile, task};
-
+use crate::versions::verifier::VersionVerifier;
 #[derive(Debug)]
 pub struct DownloaderTracking {
     progress: (usize, usize),
@@ -134,8 +135,21 @@ impl FileProgress {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct FileData {
+    path: String,
+    url: String,
+    sha1: Option<String>,
+}
+
+impl FileData {
+    pub fn new(path: String, url: String, sha1: Option<String>) -> Self {
+        Self {path, url, sha1}
+    }
+}
+
 pub async fn download_files_concurrently(
-    files: HashMap<String, String>,
+    files: Vec<FileData>,
     reqwest_client: Option<&Client>,
     progress: Option<Arc<Mutex<DownloaderTracking>>>,
 ) -> io::Result<()> 
@@ -158,9 +172,9 @@ pub async fn download_files_concurrently(
             let progress = progress.clone();
             task::spawn(async move {
                 let _permit = permit.await;
-                let url = value.0;
 
                 // add to vector
+                let url = value.url.clone();
                 let mut file_progress: Option<Arc<RwLock<FileProgress>>> = None;
                 if let Some(p) = progress.clone() {
                     let fp = Arc::new(RwLock::new(FileProgress::new(url.clone())));
@@ -169,13 +183,12 @@ pub async fn download_files_concurrently(
                 }
                 
                 let res = download_file(
-                    &url,
-                    Path::new(&value.1),
+                    value,
                     Some(&client),
                     file_progress.clone(),
                 )
                 .await;
-
+                
                 // add 1 to actual progress and file download from remove to vector
                 if let Some(p) = progress {
                     let mut pro = p.lock().await;
@@ -210,17 +223,47 @@ pub async fn download_files_secuentialy(
 
 // TODO: Builter pattern
 pub async fn download_file(
-    url: &str,
-    dest: &Path,
+    file: FileData,
     client: Option<&Client>,
     progress: Option<Arc<RwLock<FileProgress>>>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> 
 {
-    if dest.exists() { // TODO: Verify sha256 before return
-        log::debug!("El archivo ya existe: {:?}", dest);
-        return Ok(());
-    }
+    let url = file.url;
+    let dest= Path::new(&file.path);
     
+    if dest.exists() {
+        match (VersionVerifier::get_sha1(dest), &file.sha1) {
+            (Ok(local_sha1), Some(expected_sha1)) => {
+                if &local_sha1 == expected_sha1 {
+                    log::info!(
+                    "File already exists and passed checksum: {}",
+                    dest.display()
+                );
+                    return Ok(());
+                } else {
+                    log::warn!(
+                    "Checksum mismatch for {}. Expected: {}, Found: {}. Redownloading.",
+                    dest.display(),
+                    expected_sha1,
+                    local_sha1
+                );
+                }
+            }
+            (Err(e), Some(_)) => {
+                log::warn!(
+                "Failed to compute checksum for {}: {}. Redownloading.",
+                dest.display(),
+                e
+            );
+            }
+            (_, None) => {
+                log::info!(
+                "File exists but no checksum to verify: {}. Proceeding to redownload.",
+                dest.display()
+            );
+            }
+        }
+    }
 
     if let Some(parent) = dest.parent() {
         log::debug!("Create parents directories: {:?}", parent);
@@ -263,5 +306,11 @@ pub async fn download_file(
         log::debug!("{:?} - {:.2}%", dest.to_str(), progress_percent);
     }
     file.flush().await?;
+    
+    /*
+    TODO:
+    Después de descargar el archivo, verifica también el checksum, y si falla:
+        reintenta la descarga (máx. 2 o 3 veces), si no, abortar
+    */
     Ok(())
 }
