@@ -27,6 +27,9 @@ pub struct VersionJson {
     downloads: Downloads,
     libraries: Vec<Library>,
 
+    #[serde(rename = "mainClass")]
+    main_class: String,
+
     #[serde(rename = "assetIndex")]
     asset_index: AssetIndex,
     
@@ -35,19 +38,19 @@ pub struct VersionJson {
 }
 
 impl VersionJson {
-    pub fn get_from_local(minecraft_path: String, version: String) -> Self {
-        let mut file = File::open(format!(
-            "{}/versions/{}/{}.json",
-            &minecraft_path, &version, &version
-        ))
-        .expect("Failed to open version.json");
+    pub fn get_from_local(minecraft_path: &str, version: &str) -> Result<Self, String> {
+        let path = Path::new(minecraft_path)
+            .join("versions")
+            .join(version)
+            .join(format!("{}.json", version));
 
+        let mut file = File::open(path.as_path()).expect(&format!("Failed to open version.json on {}", path.display()));
         let mut content = String::new();
         file.read_to_string(&mut content)
             .expect("Failed to read launcher_profiles.json");
         let json: VersionJson =
             serde_json::from_str(&content).expect("Failed to parse launcher_profiles.json");
-        json
+        Ok(json)
     }
 }
 
@@ -58,6 +61,20 @@ impl VersionJson {
 
     pub fn get_libraries(&self) -> Vec<Library> {
         self.libraries.clone()
+    }
+
+    pub fn get_libraries_path(&self, minecraft_path: &str) -> Vec<String> { // TODO FILTER NATIVES
+        let mut count = 0;
+        let libraries = self.libraries.iter().map(
+            |library| -> String {
+                if library.is_native() { count+=1; }
+                Path::new(minecraft_path)
+                    .join("libraries")
+                    .join(library.get_path()).as_path().to_str().unwrap().to_string()
+            }
+        ).collect();
+        log::info!("Natives found: {count}");
+        libraries
     }
 
     pub fn get_asset_index(&self) -> AssetIndex {
@@ -77,6 +94,10 @@ impl VersionJson {
     
     pub fn get_type(&self) -> VersionType {
         self.version_type.clone()
+    }
+
+    pub fn get_main_class(&self) -> String {
+        self.main_class.clone()
     }
     
     pub fn id(&self) -> String {

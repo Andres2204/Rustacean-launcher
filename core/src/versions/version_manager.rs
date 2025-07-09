@@ -1,6 +1,6 @@
 use crate::downloader::download_structs::VersionType;
 use crate::downloader::downloader::DownloaderTracking;
-use crate::launcher::launcher_config::{LauncherConfig};
+use crate::launcher::launcher_config::{LauncherConfig, LauncherProfiles, LauncherSettings};
 use crate::versions::downloader::VersionDownloader;
 use crate::versions::manifest::Manifest;
 use crate::versions::verifier::VersionVerifier;
@@ -29,9 +29,9 @@ impl VersionManager {
         let config = LauncherConfig::import_config();
         let manifest = Manifest::get_version_manifest(&config.version_manifest_link).await?;
 
-        let settings = match config.settings() {
-            Some(s) => s,
-            None => return Ok(vec![]), // o maneja el error de forma apropiada
+        let settings = match LauncherProfiles::import_profiles() {
+            Some(s) => s.settings().expect("Failed to import profiles"),
+            None => LauncherSettings::default(), // o maneja el error de forma apropiada
         };
 
         let versions: Vec<Box<dyn Version>> = manifest

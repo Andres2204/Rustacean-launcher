@@ -1,5 +1,5 @@
 use crate::core::downloader::downloader::DownloaderTracking;
-use crate::core::launcher::launcher::LauncherBuilder;
+use crate::core::launcher::launcher::MinecraftBuilder;
 use crate::core::users::UserBuilder;
 use crate::core::versions::version::Version;
 use crate::core::versions::version_manager::VersionManager;
@@ -119,11 +119,11 @@ impl Tab for LaunchTab {
                 self.state = LaunchTabState::LAUNCHING;
 
                 if self.selected_version.is_some() {
-                    let ml = LauncherBuilder::new()
+                    let ml = MinecraftBuilder::new()
                         .version(self.selected_version.clone().unwrap())
                         .user(UserBuilder::default_boxed())
                         .build();
-                    ml.launch_minecraft().unwrap()
+                    ml.expect("failed to launch").launch().unwrap()
                 }
             }
             _ => {}

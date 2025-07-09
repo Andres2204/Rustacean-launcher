@@ -1,4 +1,4 @@
-use std::{io, thread};
+use std::{io};
 use std::path::Path;
 use std::sync::Arc;
 use std::time::Duration;
@@ -40,7 +40,7 @@ impl VersionDownloader {
         
         // version json local
         let minecraft_path = config.minecraft_path.clone();
-        let version_json = VersionJson::get_from_local(minecraft_path.clone(), version.name());
+        let version_json = VersionJson::get_from_local(&minecraft_path, &version.name()).map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
         
         //  Calculate total of files to download and set value to progress
         let assets_json = version_json.get_assets_json();
@@ -117,7 +117,9 @@ impl VersionDownloader {
         ).await.expect("Download method failed.");
 
         // download asset index json
-        let version_json = VersionJson::get_from_local(minecraft_path.clone(), version_name.clone());
+        let version_json = VersionJson::get_from_local(&minecraft_path, &version_name)
+            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+        
         let assets_index = version_json.get_asset_index();
         download_file(
             FileData::new(

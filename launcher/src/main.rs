@@ -8,7 +8,8 @@ use crate::core::launcher::{
         LauncherConfig,
         Ui
     },
-    launcher::LauncherBuilder};
+    launcher::MinecraftBuilder
+};
 use crate::core::users::UserBuilder;
 use crate::core::versions::version::*;
 
@@ -23,7 +24,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     }
 
     /*
-    let ml = LauncherBuilder::new()
+    let ml = MinecraftBuilder::new()
         .version(VersionBuilder::default()
             .name("1.21.7")
             .state(VersionState::INSTALLED(true))

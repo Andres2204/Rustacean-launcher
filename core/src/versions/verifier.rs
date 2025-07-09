@@ -30,7 +30,7 @@ impl VersionVerifier {
     pub fn verify_installation(version: &mut Box<(dyn Version + 'static)>) -> bool {
         // TODO: version file an client sha256
         let LauncherConfig { minecraft_path, .. } = LauncherConfig::import_config();
-        let version_json = VersionJson::get_from_local(minecraft_path.clone(), version.name());
+        let version_json = VersionJson::get_from_local(&minecraft_path, &version.name()).unwrap();
         let assets_paths: Vec<Box<PathBuf>> = {
             AssetsJson::from_local(
                 Path::new(&minecraft_path)
@@ -97,8 +97,8 @@ impl VersionVerifier {
     pub fn from_local(name: String) -> io::Result<Box<(dyn Version + 'static)>> {
         //TODO: adapt for forge, etc...
 
-        let version_json =
-            VersionJson::get_from_local(LauncherConfig::import_config().minecraft_path, name);
+        let version_json = VersionJson::get_from_local(&LauncherConfig::import_config().minecraft_path, &name).unwrap();
+        
         match version_json.get_type() {
             VersionType::RELEASE
             | VersionType::SNAPSHOT

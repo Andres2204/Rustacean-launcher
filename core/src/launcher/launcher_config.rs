@@ -1,15 +1,83 @@
 use std::fs::File;
-use std::io::Read;
-use std::path::PathBuf;
+use std::io::{Read, Write};
+use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-// TODO: singleton
 #[derive(Serialize, Deserialize, Debug)]
 pub struct LauncherConfig {
     pub minecraft_path: String,
     pub version_manifest_link: String, 
     pub ui: Ui,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub enum Ui {
+    TUI,
+    GUI
+}
+
+// initializations & auxiliar
+impl LauncherConfig {
+    pub fn import_config() -> LauncherConfig {
+        let path = Path::new("launcher_profiles.json");
+
+        if !path.exists() {
+            let default_config = Self::default();
+
+            let serialized = serde_json::to_string_pretty(&default_config)
+                .expect("Failed to serialize default launcher config");
+
+            let mut file = File::create(path)
+                .expect("Failed to create launcher_profiles.json");
+            file.write_all(serialized.as_bytes())
+                .expect("Failed to write default launcher config");
+
+            return default_config;
+        }
+
+        let mut file = File::open(path)
+            .expect("Failed to open launcher_profiles.json");
+        let mut content = String::new();
+        file.read_to_string(&mut content)
+            .expect("Failed to read launcher_profiles.json");
+
+        serde_json::from_str(&content)
+            .expect("Failed to parse launcher_profiles.json")
+    }
+    
+    fn default() -> Self {
+        Self {
+            minecraft_path: "Minecraft".to_string(),
+            version_manifest_link: "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json".to_string(),
+            ui: Ui::TUI,
+        }
+    }
+
+    pub fn save_config(&self) {
+        todo!("save_config() not implemented yet")
+    }
+}
+
+// Path getters
+impl LauncherConfig {
+    pub fn minecraft_path(&self) -> PathBuf {
+        PathBuf::from(&self.minecraft_path)
+    }
+    pub fn libraries_path(&self) -> PathBuf {
+        self.minecraft_path().join("libraries")
+    }
+    pub fn assets_path(&self) -> PathBuf {
+        self.minecraft_path().join("assets")
+    }
+    pub fn versions_path(&self) -> PathBuf {
+        self.minecraft_path().join("versions")
+    }
+}
+
+// Launcher Profiles
+#[derive(Serialize, Deserialize, Debug)]
+pub struct LauncherProfiles {
     pub profiles: HashMap<String, Profile>,
     #[serde(rename = "selectedUser")]
     pub selected_user: SelectedUser,
@@ -21,6 +89,66 @@ pub struct LauncherConfig {
     pub launcher_version: Option<LauncherVersion>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub settings: Option<LauncherSettings>,
+}
+
+impl LauncherProfiles {
+    pub fn import_profiles() -> Option<LauncherProfiles> {
+        let path = Path::new("launcher_profiles.json");
+
+        /*
+        if !path.exists() {
+            let default_config = Self::default();
+
+            let serialized = serde_json::to_string_pretty(&default_config)
+                .expect("Failed to serialize default launcher config");
+
+            let mut file = File::create(path)
+                .expect("Failed to create launcher_profiles.json");
+            file.write_all(serialized.as_bytes())
+                .expect("Failed to write default launcher config");
+
+            return default_config;
+        }
+        */
+
+        let mut file = File::open(path)
+            .expect("Failed to open launcher_profiles.json");
+        let mut content = String::new();
+        file.read_to_string(&mut content)
+            .expect("Failed to read launcher_profiles.json");
+
+        match serde_json::from_str(&content) {
+            Ok(profile) => Some(profile),
+            Err(_) => None,
+        }
+    }
+    
+    fn default() -> Self {
+        Self {
+            profiles: Default::default(),
+            selected_user: SelectedUser { account: "".to_string() },
+            authentication_database: Default::default(),
+            client_token: "".to_string(),
+            launcher_version: None,
+            settings: None,
+        }
+    }
+    
+    pub fn settings(self) -> Option<LauncherSettings> {
+        self.settings
+    }
+    
+    pub fn selected_user(self) -> SelectedUser {
+        self.selected_user
+    }
+    
+    pub fn authentication_database(self) -> HashMap<String, AuthData> {
+        self.authentication_database
+    }
+    
+    pub fn client_token(self) -> String {
+        self.client_token
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -104,81 +232,20 @@ pub struct LauncherSettings {
     pub profileSorting: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub enum Ui {
-    TUI,
-    GUI
-}
-
-// initializations & auxiliar
-impl LauncherConfig {
-    pub fn import_config() -> LauncherConfig {
-        let mut file = File::open("launcher_profiles.json").expect("Failed to open launcher_profiles.json");
-        let mut content = String::new();
-        file.read_to_string(&mut content).expect("Failed to read launcher_profiles.json");
-        let config: LauncherConfig = serde_json::from_str(&content).expect("Failed to parse launcher_profiles.json");
-        config
+impl LauncherSettings {
+    pub fn default() -> Self {
+        Self {
+            crashAssistance: false,
+            enableAdvanced: false,
+            keepLauncherOpen: false,
+            showGameLog: false,
+            allowSnapshot: true,
+            allowBeta: false,
+            allowAlpha: false,
+            useNativeLauncher: false,
+            profileSorting: Some("LastUsed".to_owned()),
+        }
     }
 }
 
-// Atribute getters
-impl LauncherConfig {
-    pub fn profiles(&self) -> &HashMap<String, Profile> {
-        &self.profiles
-    }
-    
-    pub fn selected_user(&self) -> &SelectedUser {
-        &self.selected_user
-    }
 
-    pub fn authentication_database(&self) -> &HashMap<String, AuthData> {
-        &self.authentication_database
-    }
-    
-    pub fn client_token(&self) -> &str {
-        &self.client_token
-    }
-    
-    pub fn launcher_version(&self) -> Option<&LauncherVersion> {
-        self.launcher_version.as_ref()
-    }
-    
-    pub fn settings(&self) -> Option<&LauncherSettings> {
-        self.settings.as_ref()
-    }
-}
-
-// Atribute setters (write on json)
-impl LauncherConfig {
-    pub fn add_profile(&mut self, profile: Profile) {
-        self.profiles.insert(profile.name.clone(), profile);
-    }
-    
-    pub fn remove_profile(&mut self, profile: &str) {
-        self.profiles.remove(profile);
-    }
-    
-    pub fn edit_profile(&mut self, profile_id: &str, profile: Profile) {
-        todo!("edit_profile() not implemented yet")
-    }
-    
-    pub fn save_config() {
-        todo!("save_config() not implemented yet")
-    }
-}
-
-// Path getters
-impl LauncherConfig {
-    pub fn minecraft_path(&self) -> PathBuf {
-        PathBuf::from(&self.minecraft_path)
-    }
-    pub fn libraries_path(&self) -> PathBuf {
-        self.minecraft_path().join("libraries")
-    }
-    pub fn assets_path(&self) -> PathBuf {
-        self.minecraft_path().join("assets")
-    }
-    pub fn versions_path(&self) -> PathBuf {
-        self.minecraft_path().join("versions")
-    }
-}
