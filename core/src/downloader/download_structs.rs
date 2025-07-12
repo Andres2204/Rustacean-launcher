@@ -203,6 +203,7 @@ pub struct LibraryDownload {
 pub struct AssetIndex {
     pub id: String,
     pub url: String,
+    pub sha1: String,
 }
 
 #[derive(Debug, Clone, Deserialize)]

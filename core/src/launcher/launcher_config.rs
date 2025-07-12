@@ -78,17 +78,17 @@ impl LauncherConfig {
 // Launcher Profiles
 #[derive(Serialize, Deserialize, Debug)]
 pub struct LauncherProfiles {
-    pub profiles: HashMap<String, Profile>,
+    profiles: HashMap<String, Profile>,
     #[serde(rename = "selectedUser")]
-    pub selected_user: SelectedUser,
+    selected_user: SelectedUser,
     #[serde(rename = "authenticationDatabase")]
-    pub authentication_database: HashMap<String, AuthData>,
+    authentication_database: HashMap<String, AuthData>,
     #[serde(rename = "clientToken")]
-    pub client_token: String,
+    client_token: String,
     #[serde(rename = "launcherVersion", skip_serializing_if = "Option::is_none")]
-    pub launcher_version: Option<LauncherVersion>,
+    launcher_version: Option<LauncherVersion>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub settings: Option<LauncherSettings>,
+    settings: Option<LauncherSettings>,
 }
 
 impl LauncherProfiles {
@@ -134,24 +134,29 @@ impl LauncherProfiles {
         }
     }
     
-    pub fn settings(self) -> Option<LauncherSettings> {
-        self.settings
+    pub fn settings(&self) -> Option<LauncherSettings> {
+        self.settings.clone()
     }
     
-    pub fn selected_user(self) -> SelectedUser {
-        self.selected_user
+    pub fn selected_user_account(&self) -> String {
+        self.selected_user.account.clone()
     }
     
-    pub fn authentication_database(self) -> HashMap<String, AuthData> {
-        self.authentication_database
+    pub fn authentication_database(&self) -> HashMap<String, AuthData> {
+        self.authentication_database.clone()
     }
     
-    pub fn client_token(self) -> String {
-        self.client_token
+    pub fn client_token(&self) -> String {
+        self.client_token.clone()
     }
+    
+    pub fn profiles(&self) -> HashMap<String, Profile> {
+        self.profiles.clone()
+    }
+    
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Profile {
     pub name: String,
     #[serde(default)]
@@ -175,7 +180,7 @@ pub struct Profile {
     pub use_latest_version: Option<bool>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Resolution {
     pub width: u32,
     pub height: u32,
@@ -186,7 +191,7 @@ pub struct SelectedUser {
     pub account: String,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct AuthData {
     #[serde(rename = "displayName")]
     pub display_name: String,
@@ -210,7 +215,7 @@ pub struct LauncherVersion {
     pub profiles_format: u8,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct LauncherSettings {
     #[serde(default)]
     pub crashAssistance: bool,
