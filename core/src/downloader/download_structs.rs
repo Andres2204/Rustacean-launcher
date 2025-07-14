@@ -1,8 +1,9 @@
+use crate::launcher::launcher_config::LauncherConfig;
 use serde::{Deserialize, Serialize};
+use std::env;
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
-use crate::launcher::launcher_config::LauncherConfig;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum VersionType {
@@ -23,7 +24,7 @@ pub enum VersionType {
 #[derive(Debug, Deserialize)]
 pub struct VersionJson {
     id: String,
-    pub arguments: Arguments,
+    arguments: Arguments,
     downloads: Downloads,
     libraries: Vec<Library>,
 
@@ -32,9 +33,9 @@ pub struct VersionJson {
 
     #[serde(rename = "assetIndex")]
     asset_index: AssetIndex,
-    
+
     #[serde(rename = "type")]
-    version_type: VersionType 
+    version_type: VersionType,
 }
 
 impl VersionJson {
@@ -44,7 +45,10 @@ impl VersionJson {
             .join(version)
             .join(format!("{}.json", version));
 
-        let mut file = File::open(path.as_path()).expect(&format!("Failed to open version.json on {}", path.display()));
+        let mut file = File::open(path.as_path()).expect(&format!(
+            "Failed to open version.json on {}",
+            path.display()
+        ));
         let mut content = String::new();
         file.read_to_string(&mut content)
             .expect("Failed to read launcher_profiles.json");
@@ -59,60 +63,70 @@ impl VersionJson {
         self.downloads.client.url.clone()
     }
 
+    pub fn get_arguments(&self) -> Arguments {
+        self.arguments.clone()
+    }
+
     pub fn get_libraries(&self) -> Vec<Library> {
         self.libraries.clone()
     }
 
-    pub fn get_libraries_path(&self, minecraft_path: &str) -> Vec<String> { // TODO FILTER NATIVES
-        let mut count = 0;
-        let libraries = self.libraries.iter().map(
-            |library| -> String {
-                if library.is_native() { count+=1; }
+    pub fn get_libraries_path(&self, minecraft_path: &str) -> Vec<String> {
+        let libraries = self
+            .libraries
+            .iter()
+            .map(|library| -> String {
                 Path::new(minecraft_path)
                     .join("libraries")
-                    .join(library.get_path()).as_path().to_str().unwrap().to_string()
-            }
-        ).collect();
-        log::info!("Natives found: {count}");
+                    .join(library.get_path())
+                    .as_path()
+                    .to_str()
+                    .unwrap()
+                    .to_string()
+            })
+            .collect();
         libraries
     }
 
-    pub fn get_asset_index(&self) -> AssetIndex {
-        self.asset_index.clone()
-    }
-    
-    pub fn get_assets_json(&self) -> AssetsJson {
-        let assets = AssetsJson::from_local(
-            Path::new(&LauncherConfig::import_config().minecraft_path)
-                .join("assets")
-                .join("indexes")
-                .join(format!("{}.json", self.asset_index.id).as_str())
-                .as_path(),
-        );
-        assets
-    }
-    
-    pub fn get_type(&self) -> VersionType {
-        self.version_type.clone()
-    }
 
-    pub fn get_main_class(&self) -> String {
-        self.main_class.clone()
-    }
-    
-    pub fn id(&self) -> String {
-        self.id.clone()
-    }
+// pub fn filter_libraries(&self);
+
+pub fn get_asset_index(&self) -> AssetIndex {
+    self.asset_index.clone()
+}
+
+pub fn get_assets_json(&self) -> AssetsJson {
+    let assets = AssetsJson::from_local(
+        Path::new(&LauncherConfig::import_config().minecraft_path)
+            .join("assets")
+            .join("indexes")
+            .join(format!("{}.json", self.asset_index.id).as_str())
+            .as_path(),
+    );
+    assets
+}
+
+pub fn get_type(&self) -> VersionType {
+    self.version_type.clone()
+}
+
+pub fn get_main_class(&self) -> String {
+    self.main_class.clone()
+}
+
+pub fn id(&self) -> String {
+    self.id.clone()
+}
 }
 
 // Arguments field
-#[derive(Debug, Default, Deserialize, Serialize)]
+#[derive(Debug, Default, Clone, Deserialize, Serialize)]
 pub struct Arguments {
     pub game: Vec<ArgumentRule>,
     pub jvm: Vec<ArgumentRule>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum ArgumentRule {
     Simple(String), // Maneja argumentos como cadenas
@@ -123,13 +137,13 @@ pub enum ArgumentRule {
     },
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Rule {
     action: String,
     features: Option<Features>,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Features {
     is_demo_user: Option<bool>,
     has_custom_resolution: Option<bool>,
@@ -149,7 +163,7 @@ pub struct Downloads {
 pub struct Download {
     path: Option<String>,
     url: String,
-    sha1: String
+    sha1: String,
 }
 
 // TODO: Separar Natives y diferenciar por arquitectura
@@ -157,12 +171,12 @@ pub struct Download {
 #[derive(Debug, Clone, Deserialize)]
 pub struct Library {
     downloads: LibraryDownload,
+    name: String,
     rules: Option<Vec<LibraryRule>>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct LibraryRule {
-    action: String,
     os: Option<Os>,
 }
 
@@ -171,6 +185,10 @@ pub struct Os {
     name: String,
 }
 impl Library {
+    pub fn name(&self) -> &str {
+        self.name.as_str()
+    }
+
     pub fn get_download_url(&self) -> String {
         self.downloads.artifact.url.clone()
     }
@@ -178,14 +196,31 @@ impl Library {
     pub fn get_path(&self) -> String {
         self.downloads.artifact.path.clone().unwrap()
     }
-    
+
     pub fn get_sha1(&self) -> String {
         self.downloads.artifact.sha1.clone()
     }
 
     pub fn is_native(&self) -> bool {
-        if let Some(rule) = &self.rules {
-            if !rule.is_empty() {
+        self.name.contains(":natives")
+    }
+
+    pub fn filter_native_by_os(&self) -> bool {
+        let mut current_os: String = { env::consts::OS.to_string() };
+        let mut current_arch: String = { env::consts::ARCH.to_string() }; // TODO: use arch
+        if let Some(rules) = &self.rules {
+            if current_os == "macos".to_owned() {
+                current_os = "osx".to_owned();
+            }
+            for r in rules {
+                if let Some(os) = r.os.as_ref() {
+                    if os.name == current_os {
+                        return true;
+                    }
+                }
+            }
+        } else {
+            if self.name.contains(&format!(":natives-{}", current_os)) {
                 return true;
             }
         }
@@ -223,7 +258,9 @@ impl AssetsJson {
 }
 impl AssetsJson {
     pub fn get_assets_directories(&self) -> Vec<String> {
-        let directories: Vec<String> = self.objects.clone()
+        let directories: Vec<String> = self
+            .objects
+            .clone()
             .into_iter()
             .map(|(_, h)| {
                 let hash = h.hash;

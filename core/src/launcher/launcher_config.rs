@@ -1,20 +1,20 @@
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct LauncherConfig {
     pub minecraft_path: String,
-    pub version_manifest_link: String, 
+    pub version_manifest_link: String,
     pub ui: Ui,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum Ui {
     TUI,
-    GUI
+    GUI,
 }
 
 // initializations & auxiliar
@@ -28,24 +28,21 @@ impl LauncherConfig {
             let serialized = serde_json::to_string_pretty(&default_config)
                 .expect("Failed to serialize default launcher config");
 
-            let mut file = File::create(path)
-                .expect("Failed to create launcher_profiles.json");
+            let mut file = File::create(path).expect("Failed to create launcher_profiles.json");
             file.write_all(serialized.as_bytes())
                 .expect("Failed to write default launcher config");
 
             return default_config;
         }
 
-        let mut file = File::open(path)
-            .expect("Failed to open launcher_profiles.json");
+        let mut file = File::open(path).expect("Failed to open launcher_profiles.json");
         let mut content = String::new();
         file.read_to_string(&mut content)
             .expect("Failed to read launcher_profiles.json");
 
-        serde_json::from_str(&content)
-            .expect("Failed to parse launcher_profiles.json")
+        serde_json::from_str(&content).expect("Failed to parse launcher_profiles.json")
     }
-    
+
     fn default() -> Self {
         Self {
             minecraft_path: "Minecraft".to_string(),
@@ -76,8 +73,10 @@ impl LauncherConfig {
 }
 
 // Launcher Profiles
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct LauncherProfiles {
+    #[serde(rename = "selectedProfile")]
+    selected_profile: Option<String>,
     profiles: HashMap<String, Profile>,
     #[serde(rename = "selectedUser")]
     selected_user: SelectedUser,
@@ -111,8 +110,7 @@ impl LauncherProfiles {
         }
         */
 
-        let mut file = File::open(path)
-            .expect("Failed to open launcher_profiles.json");
+        let mut file = File::open(path).expect("Failed to open launcher_profiles.json");
         let mut content = String::new();
         file.read_to_string(&mut content)
             .expect("Failed to read launcher_profiles.json");
@@ -122,38 +120,48 @@ impl LauncherProfiles {
             Err(_) => None,
         }
     }
-    
+
     fn default() -> Self {
         Self {
+            selected_profile: None,
             profiles: Default::default(),
-            selected_user: SelectedUser { account: "".to_string() },
+            selected_user: SelectedUser {
+                account: "".to_string(),
+            },
             authentication_database: Default::default(),
             client_token: "".to_string(),
             launcher_version: None,
             settings: None,
         }
     }
-    
+
     pub fn settings(&self) -> Option<LauncherSettings> {
         self.settings.clone()
     }
-    
+
     pub fn selected_user_account(&self) -> String {
         self.selected_user.account.clone()
     }
-    
+
+    pub fn selected_profile(&self) -> Option<&Profile> {
+        if let Some(selected) = self.selected_profile.clone() {
+            self.profiles.get(&selected)
+        } else {
+            None
+        }
+    }
+
     pub fn authentication_database(&self) -> HashMap<String, AuthData> {
         self.authentication_database.clone()
     }
-    
+
     pub fn client_token(&self) -> String {
         self.client_token.clone()
     }
-    
+
     pub fn profiles(&self) -> HashMap<String, Profile> {
         self.profiles.clone()
     }
-    
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -186,7 +194,7 @@ pub struct Resolution {
     pub height: u32,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct SelectedUser {
     pub account: String,
 }
@@ -207,7 +215,7 @@ pub struct AuthData {
     pub xuid: Option<String>, // Microsoft accounts
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct LauncherVersion {
     pub name: String,
     pub format: u8,
@@ -252,5 +260,3 @@ impl LauncherSettings {
         }
     }
 }
-
-

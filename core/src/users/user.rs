@@ -49,7 +49,8 @@ impl UserBuilder {
     pub fn default() -> impl User {
         OfflineUser { name: "TheRustierOne".to_owned(), }
     }
-    pub fn default_boxed() -> Box<dyn User> {
+
+    pub fn default_boxed() -> Box<impl User> {
         Box::new(Self::default())
     }
     

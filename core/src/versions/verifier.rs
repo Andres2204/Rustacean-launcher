@@ -11,7 +11,7 @@ use hex;
 
 pub struct VersionVerifier;
 impl VersionVerifier {
-    pub fn is_installed(mut version: &mut Box<(dyn Version + 'static)>) -> bool {
+    pub fn is_installed(version: &mut Box<(dyn Version + 'static)>) -> bool {
         if Path::new(&LauncherConfig::import_config().minecraft_path)
             .join("versions")
             .join(version.name())
@@ -94,6 +94,7 @@ impl VersionVerifier {
         log::info!("Verified {verified} files");
         true
     }
+    
     pub fn from_local(name: String) -> io::Result<Box<(dyn Version + 'static)>> {
         //TODO: adapt for forge, etc...
 
@@ -125,9 +126,4 @@ impl VersionVerifier {
         Ok(hex::encode(result))
     }
 
-}
-
-// TODO: verify with sha1
-fn verify_file(file: PathBuf) -> bool {
-    !file.as_path().exists()
 }

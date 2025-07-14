@@ -1,7 +1,7 @@
 use std::path::Path;
 use std::process::Stdio;
-use crate::downloader::download_structs::{VersionJson, Arguments};
-use crate::launcher::launcher_config::{LauncherConfig, LauncherProfiles};
+use crate::downloader::download_structs::{VersionJson};
+use crate::launcher::launcher_config::{LauncherConfig, LauncherProfiles, Profile};
 use crate::versions::Version;
 use crate::users::User;
 
@@ -15,38 +15,43 @@ pub struct MinecraftLauncher {
 
 impl MinecraftLauncher {
     pub fn launch(&self) -> std::io::Result<()> {
-        // TODO: java -Xmx8G -Djava.library.path=C:\Minecraft\natives -cp "C:\Minecraft\libraries\lib1.jar;C:\Minecraft\libraries\lib2.jar;C:\Minecraft\versions\1.21.3&self, &self, \client.jar" net.minecraft.client.main.Main --username "MiUsuarioOffline" --version "1.21.3" --gameDir "C:\Minecraft" --assetsDir "C:\Minecraft\assets" --assetIndex "1.21.3" --uuid "OfflineUUID" --accessToken "OfflineAccessToken" --userType "legacy"
-
-        let minecraft_path = &self.launcher_config.minecraft_path;
+        // java -Xmx8G -Djava.library.path=C:\Minecraft\natives -cp "C:\Minecraft\libraries\lib1.jar;C:\Minecraft\libraries\lib2.jar;C:\Minecraft\versions\1.21.3&self, &self, \client.jar" net.minecraft.client.main.Main --username "MiUsuarioOffline" --version "1.21.3" --gameDir "C:\Minecraft" --assetsDir "C:\Minecraft\assets" --assetIndex "1.21.3" --uuid "OfflineUUID" --accessToken "OfflineAccessToken" --userType "legacy"
+        // TODO: https://minecraft-launcher-lib.readthedocs.io/en/latest/modules/command.html
+        // TODO: https://minecraft.fandom.com/wiki/Client.json
+        
+        let minecraft_path = &self.launcher_config.minecraft_path; // TODO: PATHBUF
         let client_jar = Path::new(minecraft_path)
             .join("versions")
             .join(self.version.name())
             .join(format!("{}.jar", self.version.name()).as_str());
         let java_path = JavaPath::default();
-        let jvm_args = self.build_jvm_args();
+
+        let profile = if let Some(profiles) = self.profiles.as_ref() {
+            profiles.selected_profile()
+        } else { None };
+
+        log::debug!("Selected Profile {:?}", profile);
+        
+        let jvm_args = self.build_jvm_args(profile);
         let classpath = self.build_classpath(client_jar.as_path());
         let main_class = self.version_json.get_main_class();
         let game_args = self.build_game_args();
         let auth_args = self.build_auth_args();
         
-
-        log::info!(
+        log::debug!(
             "Launching minecraft with:
-            java: {java_path}
-            users: {}
-            game_dir: {minecraft_path}
-            client_jar. {:?}
-            version: {:?}",
+                java: {java_path}
+                users: {}
+                game_dir: {minecraft_path}
+                client_jar. {:?}
+                version: {:?}",
             self.user.username(),
             client_jar.as_path(),
             self.version.name()
         );
         
-        // TODO: https://minecraft-launcher-lib.readthedocs.io/en/latest/modules/command.html
-        // TODO: https://minecraft.fandom.com/wiki/Client.json
         // Construye el comando para ejecutar Minecraft
         let mut command = std::process::Command::new(java_path);
-        log::info!("Command created {:?}", command);
         command
             .args(jvm_args)
             .arg("-cp").arg(classpath) // Classpath con `client.jar` y bibliotecas
@@ -55,10 +60,9 @@ impl MinecraftLauncher {
             .args(auth_args)
             .stdout(Stdio::inherit())
             .stderr(Stdio::inherit());
-
-        // Ejecuta el comando y maneja posibles errores
+        log::debug!("Command created {:?}", command);
+        
         let status = command.spawn()?.wait()?;
-
         log::info!("Minecraft finished with status {:?}", status);
         if status.success() {
             log::info!("Minecraft ha finalizado correctamente.");
@@ -68,21 +72,16 @@ impl MinecraftLauncher {
         Ok(())
     }
 
-    fn build_jvm_args(&self) -> Vec<&str> {
-        let mut args = Vec::new();
-        // TODO: Adapt command to arguments in version.json
-        /* if ! profile args {
-            let Arguments { game , jvm } = &version_json.arguments; <- get defaults?
-        } else { profile args }
-        */
-
-        if let Some(profiles) = self.profiles.as_ref() {
-            let p = profiles.profiles();
-            
+    fn build_jvm_args(&self, profile: Option<&Profile>) -> Vec<String> {
+        if let Some(profile) = profile {
+            if let Some(profile_args) = &profile.java_args {
+                return profile_args
+                    .split_whitespace()
+                    .map(|s| s.to_string())
+                    .collect();
+            }
         }
-        args.push("-Xmx8G");
-        //args.push("-Djava.library.path=${natives_directory}".to_owned());
-        args
+        vec!["-Xmx8G".to_string()]
     }
 
     fn build_game_args(&self) -> Vec<String> {

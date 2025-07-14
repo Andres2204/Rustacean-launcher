@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::io;
 use std::path::Path;
 use std::sync::Arc;
@@ -11,7 +10,11 @@ pub struct LibraryDownloader;
 impl LibraryDownloader {
     pub async fn download_libraries(libraries: Vec<Library>, minecraft_path: &Path, progress: Option<Arc<Mutex<DownloaderTracking>>>) -> io::Result<()> {
         let mut files: Vec<FileData> = Vec::new();
-        libraries.into_iter().for_each(
+        libraries.into_iter()
+            //.filter(|lib| {
+            //     ! (lib.is_native() && lib.filter_native_by_os())
+            //})
+            .for_each(
             |lib| {
                 let url = lib.get_download_url();
                 let path = Path::new(minecraft_path)

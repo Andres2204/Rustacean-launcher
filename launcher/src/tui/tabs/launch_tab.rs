@@ -1,10 +1,10 @@
+use core::users::User;
 use crate::core::downloader::downloader::DownloaderTracking;
 use crate::core::launcher::launcher::MinecraftBuilder;
 use crate::core::users::UserBuilder;
 use crate::core::versions::version::Version;
 use crate::core::versions::version_manager::VersionManager;
 use crate::tui::app::Tab;
-use crate::tui::tabs::launch_tab::LaunchTabState::{DOWNLOADING, NORMAL};
 use ratatui::buffer::Buffer;
 use ratatui::crossterm::event::{KeyCode, KeyEvent};
 use ratatui::layout::{Alignment, Constraint, Layout, Rect};
@@ -13,7 +13,6 @@ use ratatui::style::{Color, Style};
 use ratatui::text::Line;
 use ratatui::widgets::{Block, BorderType, Borders, List, Paragraph};
 use std::sync::Arc;
-use std::thread;
 use tokio::sync::{Mutex};
 use tui_widget_list::{ListBuilder, ListState, ListView};
 
@@ -27,7 +26,7 @@ pub struct LaunchTab {
     list_state: ListState,
 }
 
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Debug)]
 enum LaunchTabState {
     #[default]
     NORMAL,
@@ -93,7 +92,8 @@ impl Tab for LaunchTab {
             KeyCode::Enter => {
                 self.selected_version = self.cached_versions.get(self.selected_index).cloned();
             }
-            KeyCode::Char('a') => { // TODO: Set state DOWNLOADING
+            KeyCode::Char('a') => { 
+                self.state = LaunchTabState::DOWNLOADING;
                 match &self.selected_version {
                     Some(version) => {
                         let progress = match &self.download_progress {
@@ -223,7 +223,7 @@ impl LaunchTab {
             let progress = progress.try_lock();
             let units_len = match &progress {
                 Ok(u) => {u.units().clone().iter().len()}
-                _ => {69}
+                _ => {0}
             };
             let mut l: Vec<Line> = vec![
                 Line::raw(format!("Units: {}", units_len)),
@@ -255,13 +255,32 @@ impl LaunchTab {
     }
 
     fn render_progress(&self, area: Rect, buf: &mut Buffer) {
-        let block = Block::default()
-            .borders(Borders::ALL)
-            .border_type(BorderType::Thick);
+        let [info, progress] = Layout::horizontal([
+            Constraint::Percentage(40),
+            Constraint::Percentage(60),
+        ]).areas(area);
+        
+        let info_lines = vec![
+            Line::raw(format!("Profile: {}", "not implemented")),
+            Line::raw(format!("User: {}", UserBuilder::default().username())),
+            Line::raw(format!("State: {:?}", self.state)),
+        ];
 
+        Paragraph::new(info_lines)
+            .alignment(Alignment::Left)
+            .block(Block::default()
+                .title("Info")
+                .borders(Borders::ALL)
+                .border_type(BorderType::Thick))
+            .render(info, buf);
+
+        // Renderiza progreso dentro del área `progress`
         Paragraph::new("This is the launch tab")
             .alignment(Alignment::Center)
-            .block(block)
-            .render(area, buf);
+            .block(Block::default()
+                .title("Progress")
+                .borders(Borders::ALL)
+                .border_type(BorderType::Thick))
+            .render(progress, buf);
     }
 }

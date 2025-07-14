@@ -2,40 +2,56 @@ use std::env;
 mod tui;
 use core;
 use std::error::Error;
-
-use crate::core::launcher::{
+use std::sync::Arc;
+use tokio::sync::Mutex;
+use core::launcher::{
     launcher_config::{
         LauncherConfig,
         Ui
     },
     launcher::MinecraftBuilder
 };
-use crate::core::users::UserBuilder;
-use crate::core::versions::version::*;
+use core::versions::{
+    version::{
+        VersionBuilder,
+        VersionState
+    },
+    version_manager::VersionManager
+};
+use core::downloader::downloader::DownloaderTracking;
+use core::users::UserBuilder;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    unsafe { env::set_var("RUST_LOG", "off"); }
-    env_logger::init();
-
     if let Ui::TUI = LauncherConfig::import_config().ui {
        log::info!("Starting tui...");
        tui::app::Tui::new().run_tui().expect("[MAIN/RATATUI] Failed to run UI");
+    } else {
+        unsafe { env::set_var("RUST_LOG", "off"); }
+        env_logger::init();
+
+        /*
+        VersionManager::download_version(VersionBuilder::default()
+            .name("1.21.3")
+            .state(VersionState::INSTALLED(false))
+            .url("https://piston-meta.mojang.com/v1/packages/b64c551553e59c369f4a3529b15c570ac6b9b73e/1.21.3.json")
+            .build().unwrap(),
+            Arc::new(Mutex::new(DownloaderTracking::default()))
+        ).await.expect("Failed to download version");
+        */
+        
+        let ml = MinecraftBuilder::new()
+            .version(VersionBuilder::default()
+                .name("1.21.7")
+                .state(VersionState::INSTALLED(true))
+                .build().unwrap()
+            )
+            .user(UserBuilder::default_boxed())
+            .build();
+        ml?.launch().expect("this shit failed ¯\\_(ツ)_/¯");
+        
+         
     }
-
-    /*
-    let ml = MinecraftBuilder::new()
-        .version(VersionBuilder::default()
-            .name("1.21.7")
-            .state(VersionState::INSTALLED(true))
-            .build().unwrap()
-        )
-        .user(UserBuilder::default_boxed())
-        .build();
-    ml.launch_minecraft().unwrap();
-    
-    */
-
     Ok(())
 }
 

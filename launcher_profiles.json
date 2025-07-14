@@ -3,15 +3,16 @@
   "version_manifest_link": "https://launchermeta.mojang.com/mc/game/version_manifest.json",
   "ui": "TUI",
 
+  "selectedProfile": "Vanilla",
   "profiles": {
     "Vanilla": {
       "name": "Vanilla",
       "type": "custom",
       "created": "2023-01-01T12:00:00.000Z",
       "lastUsed": "2023-06-25T19:30:00.000Z",
-      "lastVersionId": "1.20.1",
-      "gameDir": "C:\\Users\\andres\\AppData\\Roaming\\.minecraft",
-      "javaDir": "C:\\Program Files\\Java\\jdk-17\\bin\\javaw.exe",
+      "lastVersionId": "1.21.7",
+      "gameDir": "/home/andres/RustroverProjects/rustacean_launcher/Minecraft",
+      "javaDir": "/usr/bin/java",
       "javaArgs": "-Xmx4G -Xms2G -XX:+UseG1GC",
       "resolution": {
         "width": 1280,

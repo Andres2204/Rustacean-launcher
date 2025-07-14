@@ -2,7 +2,6 @@ use futures_util::StreamExt;
 use futures_util::future::join_all;
 use reqwest::Client;
 use std::collections::HashMap;
-use std::error::Error;
 use std::fs;
 use std::io;
 use std::path::Path;

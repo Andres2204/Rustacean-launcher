@@ -1,7 +1,6 @@
 use std::{io};
 use std::path::Path;
 use std::sync::Arc;
-use std::time::Duration;
 use std::fs;
 use tokio::sync::Mutex;
 use crate::downloader::download_structs::{VersionJson, VersionType};

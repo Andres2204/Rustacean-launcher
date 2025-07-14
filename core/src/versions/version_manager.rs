@@ -95,7 +95,7 @@ impl VersionManager {
         VersionVerifier::verify_installation(&mut version)
     }
 
-    pub fn delete_version(mut version: Box<(dyn Version + 'static)>) -> Option<Box<dyn Version>> {
+    pub fn delete_version(version: Box<(dyn Version + 'static)>) -> Option<Box<dyn Version>> {
         todo!("delete_version() not implemented yet")
     }
 }
