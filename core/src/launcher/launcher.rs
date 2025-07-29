@@ -1,6 +1,6 @@
 use std::path::Path;
 use std::process::Stdio;
-use crate::downloader::download_structs::{VersionJson};
+use crate::versions::version_json::{VersionJson};
 use crate::launcher::launcher_config::{LauncherConfig, LauncherProfiles, Profile};
 use crate::versions::Version;
 use crate::users::User;
@@ -52,6 +52,8 @@ impl MinecraftLauncher {
         
         // Construye el comando para ejecutar Minecraft
         let mut command = std::process::Command::new(java_path);
+        command.env("__NV_PRIME_RENDER_OFFLOAD", "1");
+        command.env("__GLX_VENDOR_LIBRARY_NAME", "nvidia");
         command
             .args(jvm_args)
             .arg("-cp").arg(classpath) // Classpath con `client.jar` y bibliotecas

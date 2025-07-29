@@ -1,4 +1,4 @@
-use crate::downloader::download_structs::{AssetsJson, VersionJson, VersionType};
+use crate::versions::version_json::{AssetsJson, VersionJson, VersionType};
 use crate::launcher::launcher_config::LauncherConfig;
 use crate::versions::version::{StandardVersion, Version, VersionState};
 use std::io;

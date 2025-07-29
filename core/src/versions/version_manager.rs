@@ -1,4 +1,4 @@
-use crate::downloader::download_structs::VersionType;
+use crate::versions::version_json::VersionType;
 use crate::downloader::downloader::DownloaderTracking;
 use crate::launcher::launcher_config::{LauncherConfig, LauncherProfiles, LauncherSettings};
 use crate::versions::downloader::VersionDownloader;

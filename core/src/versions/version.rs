@@ -1,4 +1,4 @@
-use crate::downloader::download_structs::{VersionJson, VersionType};
+use crate::versions::version_json::{VersionJson, VersionType};
 use crate::versions::manifest::VersionInfo;
 use std::fmt::{Debug, Display, Formatter};
 use std::io::{Error, ErrorKind};
