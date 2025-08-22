@@ -71,7 +71,7 @@ impl VersionDownloader {
             .progress(progress.clone())
             .build()?;
 
-        // Spawn
+        // Spawn // TODO: Es necesarop tenerlo en un hilo?
         tokio::spawn(async move {
             downloader_concurrent.download_files_concurrently(total_files).await
         });
@@ -80,7 +80,7 @@ impl VersionDownloader {
         // Wait until finish
         loop {
             let p = progress.lock().await;
-            log::info!("ACTUAL PROGRESS: {:?}  UNITS: {:?}", p.progress(), p.units().len());
+            log::debug!("ACTUAL PROGRESS: {:?}  UNITS: {:?}", p.progress(), p.units().len());
             match (p.finished(), p.state()) { 
                 (true, _) | (_, DownloadState::Finished) => {break}
                 _ => {}

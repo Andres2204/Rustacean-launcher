@@ -1,3 +1,5 @@
+use crate::tasks::tasks::{ConcurrentTask, Task};
+use crate::versions::verifier::VersionVerifier;
 use futures_util::StreamExt;
 use futures_util::future::join_all;
 use reqwest::Client;
@@ -5,12 +7,12 @@ use std::collections::HashMap;
 use std::fs;
 use std::io;
 use std::path::Path;
+use std::pin::Pin;
 use std::sync::{Arc, RwLock};
 use std::time::Duration;
 use tokio::io::AsyncWriteExt;
 use tokio::sync::{Mutex, Semaphore};
 use tokio::{fs::File as AsyncFile, task};
-use crate::versions::verifier::VersionVerifier;
 
 // +============================+
 //       DonwloaderTracking
@@ -29,9 +31,8 @@ pub enum DownloadState {
     NotDownloading,
     DownloadingInitials,
     Downloading,
-    Finished
+    Finished,
 }
-
 
 impl DownloaderTracking {
     pub fn new(progress: (usize, usize)) -> Self {
@@ -177,7 +178,7 @@ pub struct FileData {
 
 impl FileData {
     pub fn new(path: String, url: String, sha1: Option<String>) -> Self {
-        Self {path, url, sha1}
+        Self { path, url, sha1 }
     }
 }
 
@@ -189,16 +190,34 @@ pub struct Downloader {
     client: Client,
     concurrent_downloads: usize,
     retries: u16,
-    progress: Option<Arc<Mutex<DownloaderTracking>>>
+    progress: Option<Arc<Mutex<DownloaderTracking>>>,
 }
 
 unsafe impl Send for Downloader {}
 
 impl Downloader {
-
-    pub fn builder() -> Builder { Builder::default() }
+    pub fn builder() -> Builder {
+        Builder::default()
+    }
 
     pub async fn download_files_concurrently(&self, files: Vec<FileData>) -> io::Result<()> {
+        let tasks = files
+            .iter()
+            .map(|f| DownloadTask {
+                client: self.client.clone(),
+                file: f.clone(),
+                file_progress: None,
+                global_progess: self.progress.clone(),
+            })
+            .collect();
+
+        log::info!("Mandando al concurrent");
+        ConcurrentTask::new(tasks, self.concurrent_downloads)
+            .execute()
+            .await
+            .expect("Error downloading");
+
+        /*
         log::info!("Downloading files");
         let semaphore = Arc::new(Semaphore::new(self.concurrent_downloads));
 
@@ -248,22 +267,26 @@ impl Downloader {
             let mut p = p.lock().await;
             p.state = DownloadState::Finished;
         }
+        */
         Ok(())
     }
 
-    pub async fn download_files_secuentialy(
-        _files: HashMap<String, String>,
-        _reqwest_client: Option<&Client>,
-        _progress: Option<Arc<Mutex<(usize, usize)>>>,
-    ) {
-        unimplemented!("[File dowloader secuentialy] Not implemented ")
-    }
-
-    pub async fn download_file(file: FileData, client: Client, progress: Option<Arc<RwLock<FileProgress>>>, ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        if Self::verify_file(&file) { return Ok(()) }
-
-        let url = file.url;
-        let dest= Path::new(&file.path);
+    pub async fn download_file(
+        file: &FileData,
+        client: Client,
+        progress: Option<Arc<RwLock<FileProgress>>>,
+    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        log::debug!("Downloading {}", &file.path);
+        if Self::verify_file(&file) {
+            if let Some(p) = progress {
+                p.write().unwrap().set_progress((1,1));
+            }
+            return Ok(());
+        }
+        
+        log::debug!("Starting download of {}", &file.path);
+        let url = &file.url;
+        let dest = Path::new(&file.path);
         let response = match client.get(url).send().await {
             Ok(r) => r,
             Err(e) => {
@@ -304,27 +327,42 @@ impl Downloader {
     }
 
     fn verify_file(file: &FileData) -> bool {
-        let dest= Path::new(&file.path);
+        let dest = Path::new(&file.path);
         if dest.exists() {
             return match (VersionVerifier::get_sha1(dest), &file.sha1) {
                 (Ok(local_sha1), Some(expected_sha1)) => {
                     if &local_sha1 == expected_sha1 {
-                        log::info!("File already exists and passed checksum: {}", dest.display());
+                        log::info!(
+                            "File already exists and passed checksum: {}",
+                            dest.display()
+                        );
                         true
                     } else {
-                        log::warn!("Checksum mismatch for {}. Expected: {}, Found: {}. Redownloading.", dest.display(), expected_sha1,local_sha1);
+                        log::warn!(
+                            "Checksum mismatch for {}. Expected: {}, Found: {}. Redownloading.",
+                            dest.display(),
+                            expected_sha1,
+                            local_sha1
+                        );
                         false
                     }
                 }
                 (Err(e), Some(_)) => {
-                    log::warn!("Failed to compute checksum for {}: {}. Redownloading.", dest.display(),e);
+                    log::warn!(
+                        "Failed to compute checksum for {}: {}. Redownloading.",
+                        dest.display(),
+                        e
+                    );
                     false
                 }
                 (_, None) => {
-                    log::info!("File exists but no checksum to verify: {}. Proceeding to redownload.", dest.display());
+                    log::info!(
+                        "File exists but no checksum to verify: {}. Proceeding to redownload.",
+                        dest.display()
+                    );
                     false
                 }
-            }
+            };
         }
 
         if let Some(parent) = dest.parent() {
@@ -350,7 +388,7 @@ pub struct Builder {
     connect_timeout: Duration,
     timeout: Duration,
     retries: u16,
-    progress: Option<Arc<Mutex<DownloaderTracking>>>
+    progress: Option<Arc<Mutex<DownloaderTracking>>>,
 }
 
 impl Default for Builder {
@@ -376,7 +414,6 @@ impl Builder {
         self
     }
 
-
     pub fn concurret_downloads(&mut self, c: usize) -> &mut Self {
         self.concurret_downloads = c;
         self
@@ -392,13 +429,12 @@ impl Builder {
         self
     }
 
-
     fn build_client(&self) -> io::Result<Client> {
         Ok(Client::builder()
             .connect_timeout(self.connect_timeout)
             .timeout(self.timeout)
-            .build().expect("Failed to build reqwest client")
-        )
+            .build()
+            .expect("Failed to build reqwest client"))
     }
 
     pub fn build_with_client(&self, client: Client) -> io::Result<Downloader> {
@@ -406,7 +442,7 @@ impl Builder {
             client,
             concurrent_downloads: self.concurret_downloads,
             retries: self.retries,
-            progress: self.progress.clone()
+            progress: self.progress.clone(),
         })
     }
     pub fn build(&self) -> io::Result<Downloader> {
@@ -415,4 +451,34 @@ impl Builder {
     }
 }
 
+#[derive(Debug)]
+struct DownloadTask {
+    client: Client,
+    file: FileData,
+    file_progress: Option<Arc<RwLock<FileProgress>>>,
+    global_progess: Option<Arc<Mutex<DownloaderTracking>>>,
+}
 
+impl Task for DownloadTask {
+    async fn execute(&mut self) -> Pin<Box<dyn Future<Output = Result<(), String>> + Send + '_>> {
+        if let Some(progress) = self.global_progess.as_ref() {
+            if self.file_progress.is_none() {
+                self.file_progress = Some(Arc::new(RwLock::new(FileProgress::new(
+                    self.file.url.clone(),
+                ))))
+            }
+            let fp = self.file_progress.clone().unwrap();
+            progress.lock().await.add_unit(fp);
+        }
+        Box::pin(async move {
+            match Downloader::download_file(
+                &self.file,
+                self.client.clone(),
+                self.file_progress.clone(),
+            ).await {
+                Ok(()) => Ok(()),
+                Err(e) => Err(format!("Error while downloading file: {}", e).to_owned()),
+            }
+        })
+    }
+}

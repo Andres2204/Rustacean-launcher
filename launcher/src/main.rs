@@ -27,10 +27,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
        log::info!("Starting tui...");
        tui::app::Tui::new().run_tui().expect("[MAIN/RATATUI] Failed to run UI");
     } else {
-        unsafe { env::set_var("RUST_LOG", "off"); }
+        unsafe { env::set_var("RUST_LOG", "info"); }
         env_logger::init();
 
-        /*
+        
         VersionManager::download_version(VersionBuilder::default()
             .name("1.21.3")
             .state(VersionState::INSTALLED(false))
@@ -38,8 +38,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
             .build().unwrap(),
             Arc::new(Mutex::new(DownloaderTracking::default()))
         ).await.expect("Failed to download version");
-        */
         
+        /*
         let ml = MinecraftBuilder::new()
             .version(VersionBuilder::default()
                 .name("1.21.7")
@@ -49,7 +49,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             .user(UserBuilder::default_boxed())
             .build();
         ml?.launch().expect("this shit failed ¯\\_(ツ)_/¯");
-        
+        */
          
     }
     Ok(())

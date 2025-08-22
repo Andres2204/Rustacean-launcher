@@ -52,7 +52,7 @@ impl MinecraftLauncher {
         
         // Construye el comando para ejecutar Minecraft
         let mut command = std::process::Command::new(java_path);
-        command.env("__NV_PRIME_RENDER_OFFLOAD", "1");
+        command.env("__NV_PRIME_RENDER_OFFLOAD", "0");
         command.env("__GLX_VENDOR_LIBRARY_NAME", "nvidia");
         command
             .args(jvm_args)
@@ -75,15 +75,17 @@ impl MinecraftLauncher {
     }
 
     fn build_jvm_args(&self, profile: Option<&Profile>) -> Vec<String> {
+        let mut vec = vec!["-Djava.library.path=./natives".to_string()]; 
         if let Some(profile) = profile {
             if let Some(profile_args) = &profile.java_args {
-                return profile_args
+                let mut args: Vec<String> = profile_args
                     .split_whitespace()
                     .map(|s| s.to_string())
                     .collect();
+                vec.append(&mut args);
             }
         }
-        vec!["-Xmx8G".to_string()]
+        vec
     }
 
     fn build_game_args(&self) -> Vec<String> {
