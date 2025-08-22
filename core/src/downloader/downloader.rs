@@ -210,8 +210,6 @@ impl Downloader {
                 global_progess: self.progress.clone(),
             })
             .collect();
-
-        log::info!("Mandando al concurrent");
         ConcurrentTask::new(tasks, self.concurrent_downloads)
             .execute()
             .await
@@ -275,8 +273,8 @@ impl Downloader {
         file: &FileData,
         client: Client,
         progress: Option<Arc<RwLock<FileProgress>>>,
-    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        log::debug!("Downloading {}", &file.path);
+    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> 
+    {
         if Self::verify_file(&file) {
             if let Some(p) = progress {
                 p.write().unwrap().set_progress((1,1));
@@ -451,6 +449,10 @@ impl Builder {
     }
 }
 
+// +============================+
+//          DownloadTask         
+// +============================+
+
 #[derive(Debug)]
 struct DownloadTask {
     client: Client,
@@ -463,9 +465,7 @@ impl Task for DownloadTask {
     async fn execute(&mut self) -> Pin<Box<dyn Future<Output = Result<(), String>> + Send + '_>> {
         if let Some(progress) = self.global_progess.as_ref() {
             if self.file_progress.is_none() {
-                self.file_progress = Some(Arc::new(RwLock::new(FileProgress::new(
-                    self.file.url.clone(),
-                ))))
+                self.file_progress = Some(Arc::new(RwLock::new(FileProgress::new(self.file.url.clone()))))
             }
             let fp = self.file_progress.clone().unwrap();
             progress.lock().await.add_unit(fp);
