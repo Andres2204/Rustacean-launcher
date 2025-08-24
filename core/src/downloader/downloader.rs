@@ -462,7 +462,7 @@ struct DownloadTask {
 }
 
 impl Task for DownloadTask {
-    async fn execute(&mut self) -> Pin<Box<dyn Future<Output = Result<(), String>> + Send + '_>> {
+    async fn execute(&mut self) -> Result<(), String> {
         if let Some(progress) = self.global_progess.as_ref() {
             if self.file_progress.is_none() {
                 self.file_progress = Some(Arc::new(RwLock::new(FileProgress::new(self.file.url.clone()))))
@@ -470,15 +470,13 @@ impl Task for DownloadTask {
             let fp = self.file_progress.clone().unwrap();
             progress.lock().await.add_unit(fp);
         }
-        Box::pin(async move {
-            match Downloader::download_file(
-                &self.file,
-                self.client.clone(),
-                self.file_progress.clone(),
-            ).await {
-                Ok(()) => Ok(()),
-                Err(e) => Err(format!("Error while downloading file: {}", e).to_owned()),
-            }
-        })
+        match Downloader::download_file(
+            &self.file,
+            self.client.clone(),
+            self.file_progress.clone(),
+        ).await {
+            Ok(()) => Ok(()),
+            Err(e) => Err(format!("Error while downloading file: {}", e).to_owned()),
+        }
     }
 }

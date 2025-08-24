@@ -4,7 +4,7 @@ use futures_util::StreamExt;
 use tokio::sync::Semaphore;
 
 pub trait Task: Sync + Send {
-    fn execute(&mut self) -> impl Future<Output = Pin<Box<dyn Future<Output = Result<(), String>> + Send + '_>>> + Send;
+    fn execute(&mut self) -> impl Future<Output = Result<(), String>> + Send;
     fn is_abortable(&self) -> bool { false } 
     fn abort(&mut self) -> bool { false }
 }
@@ -63,7 +63,7 @@ impl<T: Task + 'static + std::fmt::Debug > ConcurrentTask<T> {
 
             set.spawn(async move {
                 let _permit = permit;
-                task.execute().await.await;
+                task.execute().await;
             });
         }
 
