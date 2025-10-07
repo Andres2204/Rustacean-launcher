@@ -8,13 +8,17 @@ use crate::downloader::downloader::{Downloader, DownloaderTracking, DownloadStat
 use crate::launcher::launcher_config::LauncherConfig;
 use crate::versions::version::Version;
 
-pub struct VersionDownloader;
-impl VersionDownloader {
+pub struct VersionDownloadTask<'a> {
+    version: &'a str,
+    json: Option<VersionJson>,
+    downloader: Downloader,
+}
+impl VersionDownloadTask<'_> {
     
     pub async fn download_version(
         version: Box<dyn Version + 'static>,
         progress: Arc<Mutex<DownloaderTracking>>,
-    ) -> io::Result<()> 
+    ) -> io::Result<()>
     {
         log::info!("Matching version type: {:?}", version.version_type());
         match version.version_type() {
@@ -58,11 +62,11 @@ impl VersionDownloader {
         let mut total_files = Self::libraries_files(
             version_json.get_libraries(),
             Path::new(&minecraft_path)
-        ).await?;
+        )?;
         let mut assets_files = Self::assets_files(
             assets_json,
             Path::new(&minecraft_path)
-        ).await?;
+        )?;
         total_files.append(&mut assets_files);
 
         let downloader_concurrent = Downloader::builder()
@@ -140,7 +144,7 @@ impl VersionDownloader {
         Ok(())
     }
 
-    async fn libraries_files(libraries: Vec<Library>, minecraft_path: &Path) -> io::Result<Vec<FileData>> {
+    fn libraries_files(libraries: Vec<Library>, minecraft_path: &Path) -> io::Result<Vec<FileData>> {
         let mut files: Vec<FileData> = Vec::new();
         libraries.into_iter()
             //.filter(|lib| {
@@ -162,7 +166,7 @@ impl VersionDownloader {
         Ok(files)
     }
 
-    async fn assets_files(assets: AssetsJson, minecraft_path: &Path)  -> io::Result<Vec<FileData>> {
+    fn assets_files(assets: AssetsJson, minecraft_path: &Path)  -> io::Result<Vec<FileData>> {
         let mut files: Vec<FileData> = Vec::new();
         let assets_dir = minecraft_path.join("assets").join("objects");
         assets.objects.into_iter().for_each(|object| {

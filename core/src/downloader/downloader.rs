@@ -1,17 +1,18 @@
-use crate::tasks::tasks::{ConcurrentTask, Task};
+use crate::tasks::tasks::{ConcurrentTask, Task, TaskResult};
 use crate::versions::verifier::VersionVerifier;
 use futures_util::StreamExt;
-use futures_util::future::join_all;
 use reqwest::Client;
 use std::collections::HashMap;
+use std::error::Error;
 use std::fs;
 use std::io;
 use std::path::Path;
 use std::pin::Pin;
 use std::sync::{Arc, RwLock};
 use std::time::Duration;
+use futures_util::future::join_all;
 use tokio::io::AsyncWriteExt;
-use tokio::sync::{Mutex, Semaphore};
+use tokio::sync::Mutex;
 use tokio::{fs::File as AsyncFile, task};
 
 // +============================+
@@ -211,10 +212,9 @@ impl Downloader {
             })
             .collect();
         ConcurrentTask::new(tasks, self.concurrent_downloads)
-            .execute()
-            .await
-            .expect("Error downloading");
-
+            .run()
+            .await;
+        
         /*
         log::info!("Downloading files");
         let semaphore = Arc::new(Semaphore::new(self.concurrent_downloads));
@@ -461,8 +461,8 @@ struct DownloadTask {
     global_progess: Option<Arc<Mutex<DownloaderTracking>>>,
 }
 
-impl Task for DownloadTask {
-    async fn execute(&mut self) -> Result<(), String> {
+impl Task<()> for DownloadTask {
+    async fn execute(&mut self) -> TaskResult<()> {
         if let Some(progress) = self.global_progess.as_ref() {
             if self.file_progress.is_none() {
                 self.file_progress = Some(Arc::new(RwLock::new(FileProgress::new(self.file.url.clone()))))
@@ -475,8 +475,8 @@ impl Task for DownloadTask {
             self.client.clone(),
             self.file_progress.clone(),
         ).await {
-            Ok(()) => Ok(()),
-            Err(e) => Err(format!("Error while downloading file: {}", e).to_owned()),
+            Ok(r) => { TaskResult::SUCCESS(r)}
+            Err(e) => {TaskResult::FAILURE(e.to_string())}
         }
     }
 }

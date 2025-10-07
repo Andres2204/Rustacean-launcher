@@ -1,19 +1,42 @@
-use std::pin::Pin;
 use std::sync::Arc;
-use futures_util::StreamExt;
 use tokio::sync::Semaphore;
 
-pub trait Task: Sync + Send {
-    fn execute(&mut self) -> impl Future<Output = Result<(), String>> + Send;
+pub trait Task<T>: Sync + Send {
+    fn execute(&mut self) -> impl Future<Output = TaskResult<T>> + Send;
     fn is_abortable(&self) -> bool { false } 
     fn abort(&mut self) -> bool { false }
 }
 
-pub struct SequentialTask<T: Task> {
-    tasks:  Vec<T>,
+pub enum TaskResult<R> {
+    SUCCESS(R),
+    FAILURE(String),
+    ABORTED,
 }
-impl<T: Task> SequentialTask<T> {
-    pub fn new(tasks: Vec<T>) -> Self {
+
+impl<R> From<TaskResult<R>> for Result<R, String> {
+    fn from(value: TaskResult<R>) -> Self {
+        match value {
+            TaskResult::SUCCESS(v) => {Ok(v)}
+            TaskResult::FAILURE(e) => {Err(e)}
+            TaskResult::ABORTED => {Err("Aborted".into())}
+        }
+    }
+}
+
+impl<T, E: ToString> From<Result<T, E>> for TaskResult<T> {
+    fn from(res: Result<T, E>) -> Self {
+        match res {
+            Ok(v) => TaskResult::SUCCESS(v),
+            Err(e) => TaskResult::FAILURE(e.to_string()),
+        }
+    }
+}
+
+pub struct SequentialTask<S: Task<()>> {
+    tasks:  Vec<S>,
+}
+impl<S: Task<()>> SequentialTask<S> {
+    pub fn new(tasks: Vec<S>) -> Self {
         Self { tasks }
     }
 
@@ -21,26 +44,26 @@ impl<T: Task> SequentialTask<T> {
         Self::new(Vec::new())
     }
 
-    pub fn add_task(&mut self, task: T) -> &mut Self {
+    pub fn add_task(&mut self, task: S) -> &mut Self {
         self.tasks.push(task);
         self
     }
 
-    pub async fn execute(&mut self) -> Result<(), String> {
+    pub async fn run(&mut self) -> TaskResult<()> {
         for task in &mut self.tasks {
             task.execute().await;
         }
-        Ok(())
+        TaskResult::SUCCESS(())
     }
 }
 
-pub struct ConcurrentTask<T: Task> {
-    tasks: Vec<T>,
+pub struct ConcurrentTask<C: Task<()>> {
+    tasks: Vec<C>,
     max_concurrent_tasks: usize,
 }
 
-impl<T: Task + 'static + std::fmt::Debug > ConcurrentTask<T> {
-    pub fn new(tasks: Vec<T>, max_concurrent_tasks: usize) -> Self {
+impl<C: Task<()> + 'static> ConcurrentTask<C> {
+    pub fn new(tasks: Vec<C>, max_concurrent_tasks: usize) -> Self {
         Self { tasks, max_concurrent_tasks }
     }
 
@@ -48,12 +71,12 @@ impl<T: Task + 'static + std::fmt::Debug > ConcurrentTask<T> {
         Self::new(Vec::new(), 32)
     }
 
-    pub fn add_task(&mut self, task: T) -> &mut Self {
+    pub fn add_task(&mut self, task: C) -> &mut Self {
         self.tasks.push(task);
         self
     }
 
-    pub async fn execute(&mut self) -> Result<(), String> {
+    pub async fn run(&mut self) -> TaskResult<()> {
         let semaphore = Arc::new(Semaphore::new(self.max_concurrent_tasks));
         let mut set = tokio::task::JoinSet::new();
 
@@ -74,7 +97,7 @@ impl<T: Task + 'static + std::fmt::Debug > ConcurrentTask<T> {
             }
         }
         log::debug!("tasks finished");
-        Ok(())
+        TaskResult::SUCCESS(())
     }
 }
 

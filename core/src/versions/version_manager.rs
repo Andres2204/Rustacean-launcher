@@ -1,7 +1,7 @@
 use crate::versions::version_json::VersionType;
 use crate::downloader::downloader::DownloaderTracking;
 use crate::launcher::launcher_config::{LauncherConfig, LauncherProfiles, LauncherSettings};
-use crate::versions::downloader::VersionDownloader;
+use crate::versions::downloader::VersionDownloadTask;
 use crate::versions::manifest::Manifest;
 use crate::versions::verifier::VersionVerifier;
 use crate::versions::version::{StandardVersion, Version};
@@ -85,7 +85,7 @@ impl VersionManager {
         //    return Ok(())
         //}
         let progress_clone = progress.clone();
-        VersionDownloader::download_version(version, progress_clone)
+        VersionDownloadTask::download_version(version, progress_clone)
             .await
             .expect("Can't Download the version");
         Ok(())
