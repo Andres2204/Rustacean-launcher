@@ -101,15 +101,17 @@ impl VersionDownloadTask<'_> {
         }
 
         let version_name = version.name();
-        let version_json = VersionJson::get_from_local(&minecraft_path, &version_name)
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
-        let assets_index = version_json.get_asset_index();
-        let files = vec![
+        downloader.download_files_concurrently(vec![
             FileData::new( // Version json
                 format!("{}/versions/{}/{}.json", &minecraft_path, &version_name, &version_name).to_string(),
                 version.json_url(),
                 None
-            ),
+        )]).await.expect(format!("Unable to download the initial file {version_name}.json").as_str());
+        
+        let version_json = VersionJson::get_from_local(&minecraft_path, &version_name)
+            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+        let assets_index = version_json.get_asset_index();
+        let files = vec![
             FileData::new( // Asset json
                 Path::new(&minecraft_path)
                     .join("assets")
@@ -138,6 +140,7 @@ impl VersionDownloadTask<'_> {
                 None
             )
         ];
+    
 
         downloader.download_files_concurrently(files).await.expect("Failed to download initial files");
         downloader.clean_progress().await;

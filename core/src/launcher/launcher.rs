@@ -52,8 +52,8 @@ impl MinecraftLauncher {
         
         // Construye el comando para ejecutar Minecraft
         let mut command = std::process::Command::new(java_path);
-        command.env("__NV_PRIME_RENDER_OFFLOAD", "0");
-        command.env("__GLX_VENDOR_LIBRARY_NAME", "nvidia");
+        //command.env("__NV_PRIME_RENDER_OFFLOAD", "0");
+        //command.env("__GLX_VENDOR_LIBRARY_NAME", "nvidia");
         command
             .args(jvm_args)
             .arg("-cp").arg(classpath) // Classpath con `client.jar` y bibliotecas

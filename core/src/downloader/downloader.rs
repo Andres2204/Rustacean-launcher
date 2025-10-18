@@ -1,6 +1,7 @@
 use crate::tasks::tasks::{ConcurrentTask, Task, TaskResult};
 use crate::versions::verifier::VersionVerifier;
 use futures_util::StreamExt;
+use futures_util::future::join_all;
 use reqwest::Client;
 use std::collections::HashMap;
 use std::error::Error;
@@ -10,7 +11,6 @@ use std::path::Path;
 use std::pin::Pin;
 use std::sync::{Arc, RwLock};
 use std::time::Duration;
-use futures_util::future::join_all;
 use tokio::io::AsyncWriteExt;
 use tokio::sync::Mutex;
 use tokio::{fs::File as AsyncFile, task};
@@ -74,6 +74,10 @@ impl DownloaderTracking {
 
     pub fn set_actual_progress(&mut self, actual: usize) {
         self.progress.0 = actual
+    }
+
+    pub fn add_to_progress_count(&mut self) {
+        self.progress.0 += 1
     }
 
     pub fn total_progress(&self) -> usize {
@@ -214,7 +218,7 @@ impl Downloader {
         ConcurrentTask::new(tasks, self.concurrent_downloads)
             .run()
             .await;
-        
+
         /*
         log::info!("Downloading files");
         let semaphore = Arc::new(Semaphore::new(self.concurrent_downloads));
@@ -277,11 +281,11 @@ impl Downloader {
     {
         if Self::verify_file(&file) {
             if let Some(p) = progress {
-                p.write().unwrap().set_progress((1,1));
+                p.write().unwrap().set_progress((1, 1));
             }
             return Ok(());
         }
-        
+
         log::debug!("Starting download of {}", &file.path);
         let url = &file.url;
         let dest = Path::new(&file.path);
@@ -450,7 +454,7 @@ impl Builder {
 }
 
 // +============================+
-//          DownloadTask         
+//          DownloadTask
 // +============================+
 
 #[derive(Debug)]
@@ -463,20 +467,35 @@ struct DownloadTask {
 
 impl Task<()> for DownloadTask {
     async fn execute(&mut self) -> TaskResult<()> {
-        if let Some(progress) = self.global_progess.as_ref() {
-            if self.file_progress.is_none() {
-                self.file_progress = Some(Arc::new(RwLock::new(FileProgress::new(self.file.url.clone()))))
-            }
-            let fp = self.file_progress.clone().unwrap();
-            progress.lock().await.add_unit(fp);
+        if self.file_progress.is_none() {
+            self.file_progress = Some(Arc::new(RwLock::new(FileProgress::new(
+                self.file.url.clone(),
+            ))))
         }
-        match Downloader::download_file(
-            &self.file,
-            self.client.clone(),
-            self.file_progress.clone(),
-        ).await {
-            Ok(r) => { TaskResult::SUCCESS(r)}
-            Err(e) => {TaskResult::FAILURE(e.to_string())}
+
+        let fp = self.file_progress.clone().unwrap();
+
+        if let Some(progress) = self.global_progess.as_ref() {
+            progress.lock().await.add_unit(fp.clone());
+        }
+
+        let res = Downloader::download_file(&self.file, self.client.clone(), self.file_progress.clone()).await;
+
+        if let Some(progress) = self.global_progess.as_ref() {
+            let mut lock = progress.lock().await;
+            let fp_name = {
+                // crear un scope para liberar el guard antes del await
+                let read = fp.read().unwrap();
+                read.name.clone()
+            };
+            lock.remove_unit(fp_name).await;
+            lock.add_to_progress_count();
+        }
+
+        match res {
+            Ok(r) => TaskResult::SUCCESS(r),
+            Err(e) => TaskResult::FAILURE(e.to_string()),
         }
     }
+
 }
